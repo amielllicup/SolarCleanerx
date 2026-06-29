@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.solarcleaner"
+        applicationId = "com.solarglide.solarcleaner"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -23,12 +23,13 @@ android {
 
     buildTypes {
         release {
-            // Creates an installable release APK for local testing.
-            // Replace this with your own keystore before publishing.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("debug")
-            optimization {
-                enable = false
-            }
         }
     }
     compileOptions {
@@ -44,7 +45,10 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)

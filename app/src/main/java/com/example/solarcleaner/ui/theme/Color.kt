@@ -2,16 +2,27 @@ package com.example.solarcleaner.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val SolarNavy = Color(0xFF0B1F3A)
-val SolarBlue = Color(0xFF1E88E5)
-val SolarBlueLight = Color(0xFFEAF5FF)
-val SolarSun = Color(0xFFFFB300)
-val SolarOrange = Color(0xFFFF7A1A)
-val SolarGreen = Color(0xFF21A67A)
-val SolarGray = Color(0xFF7E8A98)
-val SolarBackground = Color(0xFFF7FAFD)
-val SolarSurface = Color(0xFFFFFFFF)
-val SolarOutline = Color(0xFFE1E8F0)
+// Luxury Dark Theme Palette
+val SolarGold = Color(0xFFFFD700)
+val SolarGoldLight = Color(0xFFFFF1A7)
+val SolarDeepNavy = Color(0xFF0A0E14)
+val SolarSurfaceDark = Color(0xFF161B22)
+val SolarCardDark = Color(0xFF1F262E)
+val SolarTextPrimary = Color(0xFFE6EDF3)
+val SolarTextSecondary = Color(0xFF8B949E)
+val SolarAccentBlue = Color(0xFF58A6FF)
+val SolarAccentGreen = Color(0xFF3FB950)
+val SolarAccentOrange = Color(0xFFF0883E)
+val SolarOutlineDark = Color(0xFF30363D)
 
-val SolarNavyDark = Color(0xFF071528)
-val SolarBlueDark = Color(0xFF90CAF9)
+// Legacy Compatibility (if needed by other components temporarily)
+val SolarNavy = SolarDeepNavy
+val SolarBlue = SolarAccentBlue
+val SolarBlueLight = Color(0xFF1C2D3E)
+val SolarSun = SolarGold
+val SolarOrange = SolarAccentOrange
+val SolarGreen = SolarAccentGreen
+val SolarGray = SolarTextSecondary
+val SolarBackground = SolarDeepNavy
+val SolarSurface = SolarSurfaceDark
+val SolarOutline = SolarOutlineDark
