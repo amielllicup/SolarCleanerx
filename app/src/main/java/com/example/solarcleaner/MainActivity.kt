@@ -10,9 +10,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.Search
@@ -78,9 +75,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -89,19 +92,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.solarcleaner.R
-import com.example.solarcleaner.ui.theme.SolarBackground
-import com.example.solarcleaner.ui.theme.SolarBlue
-import com.example.solarcleaner.ui.theme.SolarBlueLight
+import com.example.solarcleaner.data.HistoricalData
+import com.example.solarcleaner.data.SolarData
+import com.example.solarcleaner.repository.FirebaseRepository
 import com.example.solarcleaner.ui.theme.SolarCleanerTheme
-import com.example.solarcleaner.ui.theme.SolarGray
+import com.example.solarcleaner.ui.theme.SolarBlue
 import com.example.solarcleaner.ui.theme.SolarGreen
-import com.example.solarcleaner.ui.theme.SolarNavy
 import com.example.solarcleaner.ui.theme.SolarOrange
-import com.example.solarcleaner.ui.theme.SolarOutline
 import com.example.solarcleaner.ui.theme.SolarSun
-import com.example.solarcleaner.ui.theme.SolarGold
-import com.example.solarcleaner.ui.theme.SolarTextSecondary
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlin.math.max
+import java.text.SimpleDateFormat
+import java.time.LocalTime
+import java.util.*
 
 private const val LoginEmail = "admin@solarglide.com"
 private const val LoginPassword = "Admin@1234"
@@ -260,13 +265,10 @@ private fun LoginScreen(onLoginSuccess: () -> Unit) {
 private fun MainApp(onLogout: () -> Unit) {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.Dashboard) }
     var cleanerOn by rememberSaveable { mutableStateOf(false) }
-    val cleaningHistory = remember {
-        mutableStateListOf(
-            "June 4, 2026 - Cleaning Started",
-            "June 4, 2026 - Cleaning Stopped",
-            "June 3, 2026 - Cleaning Completed"
-        )
-    }
+    val cleaningHistory = remember { mutableStateListOf<String>() }
+
+    // Initialize Firebase Repository
+    val repository = remember { FirebaseRepository() }
 
     Scaffold(
         topBar = {
@@ -302,7 +304,7 @@ private fun MainApp(onLogout: () -> Unit) {
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                         label = "NavScale"
                     )
-                    
+
                     NavigationBarItem(
                         selected = selected,
                         onClick = { selectedTab = tab },
@@ -346,47 +348,49 @@ private fun MainApp(onLogout: () -> Unit) {
                         cleanerOn = cleanerOn,
                         onToggleCleaner = {
                             cleanerOn = !cleanerOn
+                            val dateFormat = SimpleDateFormat("MMMM d, yyyy - HH:mm", Locale.getDefault())
+                            val timestamp = dateFormat.format(Date())
                             cleaningHistory.add(
                                 0,
                                 if (cleanerOn) {
-                                    "June 4, 2026 - Cleaning Started"
+                                    "$timestamp - Cleaning Started"
                                 } else {
-                                    "June 4, 2026 - Cleaning Stopped"
+                                    "$timestamp - Cleaning Stopped"
                                 }
                             )
-                        }
+                            // Update cleaner status in Firebase
+                            CoroutineScope(Dispatchers.IO).launch {
+                                repository.updateCleanerStatus(cleanerOn)
+                            }
+                        },
+                        repository = repository
                     )
 
                     AppTab.Camera -> CameraScreen()
+
                     AppTab.Consumption -> HistoryScreen(
                         title = "Power Consumption History",
                         icon = Icons.Rounded.Bolt,
                         accentColor = SolarBlue,
-                        items = listOf(
-                            "8:00 AM - 100 W",
-                            "10:00 AM - 125 W",
-                            "12:00 PM - 140 W",
-                            "2:00 PM - 115 W"
-                        )
+                        repository = repository,
+                        dataType = HistoryDataType.CONSUMPTION
                     )
 
                     AppTab.Harvest -> HistoryScreen(
                         title = "Harvested Power History",
                         icon = Icons.Rounded.WbSunny,
                         accentColor = SolarSun,
-                        items = listOf(
-                            "8:00 AM - 250 W",
-                            "10:00 AM - 390 W",
-                            "12:00 PM - 480 W",
-                            "2:00 PM - 430 W"
-                        )
+                        repository = repository,
+                        dataType = HistoryDataType.HARVEST
                     )
 
                     AppTab.Cleaning -> HistoryScreen(
                         title = "Solar Panel Cleaning History",
                         icon = Icons.Rounded.Autorenew,
                         accentColor = SolarGreen,
-                        items = cleaningHistory
+                        repository = repository,
+                        dataType = HistoryDataType.CLEANING,
+                        cleaningHistoryItems = cleaningHistory
                     )
                 }
             }
@@ -395,13 +399,95 @@ private fun MainApp(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
+private fun DashboardScreen(
+    cleanerOn: Boolean,
+    onToggleCleaner: () -> Unit,
+    repository: FirebaseRepository
+) {
     val cleanerButtonColor by animateColorAsState(
         targetValue = if (cleanerOn) SolarGreen else MaterialTheme.colorScheme.primary,
         label = "ButtonColor"
     )
 
+    var currentSolarData by remember { mutableStateOf<SolarData?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var connectionStatus by remember { mutableStateOf("Waiting for data...") }
+    var isConnected by remember { mutableStateOf(false) }
+
+    val consumptionData = remember { mutableStateListOf<Float>() }
+    val harvestData = remember { mutableStateListOf<Float>() }
+    val timeLabels = remember { mutableStateListOf<String>() }
+
+    LaunchedEffect(Unit) {
+        if (consumptionData.isEmpty()) {
+            try {
+                val history = repository.getHistoricalData(12)
+                if (history.isNotEmpty()) {
+                    consumptionData.clear()
+                    harvestData.clear()
+                    timeLabels.clear()
+
+                    history.forEach { data ->
+                        consumptionData.add((data.panel1Consumption + data.panel2Consumption).toFloat())
+                        harvestData.add((data.panel1Harvest + data.panel2Harvest).toFloat())
+                        timeLabels.add(formatTimestamp(data.timestamp))
+                    }
+                    connectionStatus = "Connected to Firebase"
+                    isConnected = true
+                } else {
+                    connectionStatus = "No data available in Firebase"
+                    isConnected = false
+                }
+            } catch (e: Exception) {
+                connectionStatus = "Error: ${e.message}"
+                isConnected = false
+            }
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        repository.observeSolarData().collect { data ->
+            currentSolarData = data
+
+            val totalConsumption = data.panel1Consumption + data.panel2Consumption
+            val totalHarvest = data.panel1Harvest + data.panel2Harvest
+
+            consumptionData.add(totalConsumption.toFloat())
+            harvestData.add(totalHarvest.toFloat())
+            timeLabels.add(formatTimestamp(data.timestamp))
+
+            if (consumptionData.size > 12) {
+                consumptionData.removeAt(0)
+                harvestData.removeAt(0)
+                timeLabels.removeAt(0)
+            }
+
+            connectionStatus = "Live data from Firebase"
+            isConnected = true
+            isLoading = false
+        }
+    }
+
     ScreenColumn {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(if (isConnected && currentSolarData != null) SolarGreen else Color.Red, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = connectionStatus,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isConnected && currentSolarData != null) SolarGreen else Color.Red
+            )
+        }
+
         Text(
             text = "Welcome Back,",
             style = MaterialTheme.typography.titleMedium,
@@ -415,20 +501,145 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        PanelCard(
-            panelName = "Solar Panel 1",
-            consumption = "65 W",
-            harvested = "230 W"
-        )
-        
-        PanelCard(
-            panelName = "Solar Panel 2",
-            consumption = "55 W",
-            harvested = "220 W"
-        )
+        CardContainer {
+            Text(
+                text = "Live Power Data",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Consumption vs Harvest (W)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(SolarOrange, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Consumption", style = MaterialTheme.typography.bodySmall)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(SolarBlue, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Harvest", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (isLoading || consumptionData.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isLoading) "Loading data..." else "No data available",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LineGraph(
+                    consumptionData = consumptionData,
+                    harvestData = harvestData,
+                    timeLabels = timeLabels,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (currentSolarData != null) {
+            PanelCard(
+                panelName = "Solar Panel 1",
+                consumption = "${currentSolarData!!.panel1Consumption} W",
+                harvested = "${currentSolarData!!.panel1Harvest} W"
+            )
+
+            PanelCard(
+                panelName = "Solar Panel 2",
+                consumption = "${currentSolarData!!.panel2Consumption} W",
+                harvested = "${currentSolarData!!.panel2Harvest} W"
+            )
+
+            CardContainer {
+                Text(
+                    text = "System Summary",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Total Power", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "${currentSolarData!!.panel1Consumption + currentSolarData!!.panel2Consumption} W",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = SolarOrange,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Column {
+                        Text("Total Harvest", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "${currentSolarData!!.panel1Harvest + currentSolarData!!.panel2Harvest} W",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = SolarBlue,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Column {
+                        Text("Efficiency", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = String.format("%.1f%%",
+                                if (currentSolarData!!.panel1Harvest + currentSolarData!!.panel2Harvest > 0) {
+                                    ((currentSolarData!!.panel1Consumption + currentSolarData!!.panel2Consumption).toFloat() /
+                                            (currentSolarData!!.panel1Harvest + currentSolarData!!.panel2Harvest).toFloat()) * 100
+                                } else 0f
+                            ),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = SolarGreen,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        } else {
+            CardContainer {
+                Text(
+                    text = "Waiting for data...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 20.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         CardContainer {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -449,7 +660,9 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
                 }
                 Switch(
                     checked = cleanerOn,
-                    onCheckedChange = { onToggleCleaner() },
+                    onCheckedChange = {
+                        onToggleCleaner()
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = SolarGreen,
@@ -460,7 +673,9 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = onToggleCleaner,
+                onClick = {
+                    onToggleCleaner()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -487,8 +702,121 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
 }
 
 @Composable
+fun LineGraph(
+    consumptionData: List<Float>,
+    harvestData: List<Float>,
+    timeLabels: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val padding = 40f
+        val graphWidth = width - (padding * 2)
+        val graphHeight = height - (padding * 2)
+
+        val maxValue = max(
+            consumptionData.maxOrNull() ?: 100f,
+            harvestData.maxOrNull() ?: 100f
+        ) * 1.1f
+
+        val minValue = 0f
+
+        val gridColor = Color.Gray.copy(alpha = 0.2f)
+        for (i in 0..4) {
+            val y = padding + (graphHeight * (1f - i / 4f))
+            drawLine(
+                color = gridColor,
+                start = Offset(padding, y),
+                end = Offset(width - padding, y),
+                strokeWidth = 1f
+            )
+
+            val value = minValue + (maxValue - minValue) * (i / 4f)
+            drawContext.canvas.nativeCanvas.apply {
+                val textPaint = android.graphics.Paint().apply {
+                    color = Color.Gray.toArgb()
+                    textSize = 24f
+                    textAlign = android.graphics.Paint.Align.RIGHT
+                    isAntiAlias = true
+                }
+                drawText(
+                    "${value.toInt()}W",
+                    padding - 8f,
+                    y + 8f,
+                    textPaint
+                )
+            }
+        }
+
+        fun drawLine(data: List<Float>, color: Color) {
+            if (data.size < 2) return
+
+            val path = Path()
+            val step = graphWidth / (data.size - 1)
+
+            data.forEachIndexed { index, value ->
+                val x = padding + (index * step)
+                val normalizedValue = (value - minValue) / (maxValue - minValue)
+                val y = padding + graphHeight * (1f - normalizedValue)
+
+                if (index == 0) {
+                    path.moveTo(x, y)
+                } else {
+                    path.lineTo(x, y)
+                }
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 3f, cap = StrokeCap.Round)
+            )
+
+            data.forEachIndexed { index, value ->
+                val x = padding + (index * step)
+                val normalizedValue = (value - minValue) / (maxValue - minValue)
+                val y = padding + graphHeight * (1f - normalizedValue)
+
+                drawCircle(
+                    color = color,
+                    radius = 4f,
+                    center = Offset(x, y)
+                )
+            }
+        }
+
+        drawLine(consumptionData, SolarOrange)
+        drawLine(harvestData, SolarBlue)
+
+        if (timeLabels.isNotEmpty()) {
+            val step = graphWidth / (timeLabels.size - 1)
+            timeLabels.forEachIndexed { index, label ->
+                val x = padding + (index * step)
+                drawContext.canvas.nativeCanvas.apply {
+                    val textPaint = android.graphics.Paint().apply {
+                        color = Color.Gray.toArgb()
+                        textSize = 24f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        isAntiAlias = true
+                    }
+                    drawText(
+                        label,
+                        x,
+                        height - 8f,
+                        textPaint
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun CameraScreen() {
     var ipAddress by rememberSaveable { mutableStateOf("") }
+    var isConnecting by remember { mutableStateOf(false) }
+    var connectionMessage by remember { mutableStateOf("") }
 
     ScreenColumn {
         Text(
@@ -497,7 +825,7 @@ private fun CameraScreen() {
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Frontend preview for future ESP32-CAM streaming.",
+            text = "Connect to ESP32-CAM for live streaming",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -506,7 +834,10 @@ private fun CameraScreen() {
         CardContainer {
             OutlinedTextField(
                 value = ipAddress,
-                onValueChange = { ipAddress = it },
+                onValueChange = {
+                    ipAddress = it
+                    connectionMessage = ""
+                },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("ESP-CAM IP Address") },
                 placeholder = { Text("Enter ESP-CAM IP Address") },
@@ -518,8 +849,34 @@ private fun CameraScreen() {
                 )
             )
             Spacer(modifier = Modifier.height(16.dp))
+
+            if (connectionMessage.isNotEmpty()) {
+                Text(
+                    text = connectionMessage,
+                    color = if (connectionMessage.contains("Connected")) SolarGreen else Color.Red,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Button(
-                onClick = { },
+                onClick = {
+                    if (ipAddress.isNotBlank()) {
+                        isConnecting = true
+                        connectionMessage = "Connecting to $ipAddress..."
+                        CoroutineScope(Dispatchers.Main).launch {
+                            kotlinx.coroutines.delay(2000)
+                            isConnecting = false
+                            connectionMessage = if (ipAddress.matches(Regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"))) {
+                                "Connected to ESP32-CAM at $ipAddress"
+                            } else {
+                                "Invalid IP address format"
+                            }
+                        }
+                    } else {
+                        connectionMessage = "Please enter an IP address"
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -527,11 +884,20 @@ private fun CameraScreen() {
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                enabled = !isConnecting
             ) {
-                Text("CAM", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Connect Camera")
+                if (isConnecting) {
+                    Text("Connecting...", fontWeight = FontWeight.Bold)
+                } else {
+                    Text("Connect Camera", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.Videocam,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
@@ -549,18 +915,18 @@ private fun CameraScreen() {
                     Icon(
                         imageVector = Icons.Rounded.Videocam,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (connectionMessage.contains("Connected")) SolarGreen else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Live Stream Preview",
+                        text = if (connectionMessage.contains("Connected")) "Live Stream Active" else "Live Stream Preview",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (connectionMessage.contains("Connected")) SolarGreen else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Connect to view feed",
+                        text = if (connectionMessage.isNotEmpty()) connectionMessage else "Connect to view feed",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -568,11 +934,11 @@ private fun CameraScreen() {
             }
         }
 
-        if (ipAddress.isNotBlank()) {
+        if (ipAddress.isNotBlank() && connectionMessage.contains("Connected")) {
             Spacer(modifier = Modifier.height(14.dp))
             CardContainer {
                 Text(
-                    text = "Sample stream URL",
+                    text = "Stream URL",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -581,9 +947,21 @@ private fun CameraScreen() {
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Click the URL to open in browser or use for streaming",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
+}
+
+enum class HistoryDataType {
+    CONSUMPTION,
+    HARVEST,
+    CLEANING
 }
 
 @Composable
@@ -591,9 +969,65 @@ private fun HistoryScreen(
     title: String,
     icon: ImageVector,
     accentColor: Color,
-    items: List<String>
+    repository: FirebaseRepository,
+    dataType: HistoryDataType,
+    cleaningHistoryItems: List<String> = emptyList()
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+    var items by remember { mutableStateOf<List<String>>(emptyList()) }
+    var connectionStatus by remember { mutableStateOf("Loading...") }
+
+    LaunchedEffect(dataType) {
+        if (dataType == HistoryDataType.CLEANING) {
+            items = cleaningHistoryItems.ifEmpty { listOf("No cleaning history available") }
+            connectionStatus = "Cleaning history loaded"
+            isLoading = false
+        } else {
+            try {
+                val history = repository.getHistoricalData(20)
+
+                items = when (dataType) {
+                    HistoryDataType.CONSUMPTION -> {
+                        if (history.isNotEmpty()) {
+                            history.map { data ->
+                                val total = data.panel1Consumption + data.panel2Consumption
+                                "${formatTimestamp(data.timestamp)} - Total: $total W (P1: ${data.panel1Consumption}W, P2: ${data.panel2Consumption}W)"
+                            }
+                        } else {
+                            listOf("No consumption data available")
+                        }
+                    }
+                    HistoryDataType.HARVEST -> {
+                        if (history.isNotEmpty()) {
+                            history.map { data ->
+                                val total = data.panel1Harvest + data.panel2Harvest
+                                "${formatTimestamp(data.timestamp)} - Total: $total W (P1: ${data.panel1Harvest}W, P2: ${data.panel2Harvest}W)"
+                            }
+                        } else {
+                            listOf("No harvest data available")
+                        }
+                    }
+                    else -> emptyList()
+                }
+
+                connectionStatus = if (items.isNotEmpty() && items.first() != "No consumption data available" && items.first() != "No harvest data available") {
+                    "Loaded from Firebase"
+                } else {
+                    "No data available"
+                }
+            } catch (e: Exception) {
+                connectionStatus = "Error: ${e.message}"
+                items = when (dataType) {
+                    HistoryDataType.CONSUMPTION -> listOf("Error loading consumption data")
+                    HistoryDataType.HARVEST -> listOf("Error loading harvest data")
+                    else -> emptyList()
+                }
+            }
+            isLoading = false
+        }
+    }
+
     val filteredItems = remember(searchQuery, items) {
         if (searchQuery.isBlank()) {
             items
@@ -609,13 +1043,36 @@ private fun HistoryScreen(
         contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
     ) {
         item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            when {
+                                connectionStatus.contains("Firebase") -> SolarGreen
+                                connectionStatus.contains("Error") -> Color.Red
+                                else -> Color.Gray
+                            },
+                            CircleShape
+                        )
+                )
+            }
             Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.ExtraBold
+                text = connectionStatus,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = searchQuery,
@@ -636,11 +1093,11 @@ private fun HistoryScreen(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
-            
+
             Spacer(modifier = Modifier.height(20.dp))
         }
 
-        if (filteredItems.isEmpty()) {
+        if (isLoading) {
             item {
                 Box(
                     modifier = Modifier
@@ -649,7 +1106,22 @@ private fun HistoryScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No matching records found.",
+                        text = "Loading history...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else if (filteredItems.isEmpty() || filteredItems.all { it.contains("No data") || it.contains("Error") }) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = filteredItems.firstOrNull() ?: "No matching records found.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -768,6 +1240,11 @@ private fun PanelCard(
         }
     }
     Spacer(modifier = Modifier.height(16.dp))
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val time = LocalTime.ofSecondOfDay(timestamp / 1000 % 86400)
+    return String.format("%d:%02d", time.hour, time.minute)
 }
 
 private enum class AppTab(val label: String, val icon: ImageVector) {
