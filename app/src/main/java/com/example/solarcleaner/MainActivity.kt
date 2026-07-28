@@ -10,7 +10,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
@@ -42,17 +41,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Power
+import androidx.compose.material.icons.rounded.TableChart
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.WbSunny
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EnergySavingsLeaf
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -66,9 +75,16 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +94,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,37 +106,64 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
+import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.compose.common.shape.dashedShape
+import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
+import com.patrykandpatrick.vico.compose.cartesian.layer.point
+import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import com.example.solarcleaner.R
-import com.example.solarcleaner.ui.theme.SolarBackground
-import com.example.solarcleaner.ui.theme.SolarBlue
-import com.example.solarcleaner.ui.theme.SolarBlueLight
-import com.example.solarcleaner.ui.theme.SolarCleanerTheme
-import com.example.solarcleaner.ui.theme.SolarGray
-import com.example.solarcleaner.ui.theme.SolarGreen
-import com.example.solarcleaner.ui.theme.SolarNavy
-import com.example.solarcleaner.ui.theme.SolarOrange
-import com.example.solarcleaner.ui.theme.SolarOutline
-import com.example.solarcleaner.ui.theme.SolarSun
-import com.example.solarcleaner.ui.theme.SolarGold
-import com.example.solarcleaner.ui.theme.SolarTextSecondary
+import com.example.solarcleaner.data.FirebaseRepository
+import com.example.solarcleaner.data.SolarLiveData
+import com.example.solarcleaner.data.FirebaseHistoryRecord
+import com.example.solarcleaner.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlin.random.Random
+
+private data class DailyRecord(
+    val date: String,
+    val panel: String,
+    val consumption: String,
+    val harvest: String
+)
+
+private data class CleaningRecord(
+    val date: String,
+    val time: String,
+    val action: String,
+    val status: String
+)
 
 private const val LoginEmail = "admin@solarglide.com"
 private const val LoginPassword = "Admin@1234"
 
 class MainActivity : ComponentActivity() {
+    private val repository by lazy { FirebaseRepository() }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SolarCleanerTheme {
-                SolarGlideApp()
+                SolarGlideApp(repository)
             }
         }
     }
 }
 
 @Composable
-private fun SolarGlideApp() {
+private fun SolarGlideApp(repository: FirebaseRepository) {
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
 
     Surface(
@@ -128,7 +172,7 @@ private fun SolarGlideApp() {
     ) {
         Crossfade(targetState = isLoggedIn, animationSpec = tween(800)) { loggedIn ->
             if (loggedIn) {
-                MainApp(onLogout = { isLoggedIn = false })
+                MainApp(repository, onLogout = { isLoggedIn = false })
             } else {
                 LoginScreen(onLoginSuccess = { isLoggedIn = true })
             }
@@ -257,16 +301,17 @@ private fun LoginScreen(onLoginSuccess: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainApp(onLogout: () -> Unit) {
+private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.Dashboard) }
-    var cleanerOn by rememberSaveable { mutableStateOf(false) }
-    val cleaningHistory = remember {
-        mutableStateListOf(
-            "June 4, 2026 - Cleaning Started",
-            "June 4, 2026 - Cleaning Stopped",
-            "June 3, 2026 - Cleaning Completed"
-        )
-    }
+    
+    // Observe Firebase data
+    val cleanerOn by repository.getCleanerStatus().collectAsState(initial = false)
+    val solarLiveData by repository.getSolarLiveData().collectAsState(initial = SolarLiveData())
+    val fbHistory by repository.getHistory().collectAsState(initial = emptyList())
+    val fbCleaningHistory by repository.getCleaningHistory().collectAsState(initial = emptyList())
+
+    val sdf = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
+    val timeSdf = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
     Scaffold(
         topBar = {
@@ -344,50 +389,34 @@ private fun MainApp(onLogout: () -> Unit) {
                 when (tab) {
                     AppTab.Dashboard -> DashboardScreen(
                         cleanerOn = cleanerOn,
-                        onToggleCleaner = {
-                            cleanerOn = !cleanerOn
-                            cleaningHistory.add(
-                                0,
-                                if (cleanerOn) {
-                                    "June 4, 2026 - Cleaning Started"
-                                } else {
-                                    "June 4, 2026 - Cleaning Stopped"
-                                }
-                            )
-                        }
+                        solarData = solarLiveData ?: SolarLiveData(),
+                        onToggleCleaner = { repository.toggleCleaner(!cleanerOn) }
                     )
 
                     AppTab.Camera -> CameraScreen()
-                    AppTab.Consumption -> HistoryScreen(
-                        title = "Power Consumption History",
-                        icon = Icons.Rounded.Bolt,
-                        accentColor = SolarBlue,
-                        items = listOf(
-                            "8:00 AM - 100 W",
-                            "10:00 AM - 125 W",
-                            "12:00 PM - 140 W",
-                            "2:00 PM - 115 W"
-                        )
-                    )
-
-                    AppTab.Harvest -> HistoryScreen(
-                        title = "Harvested Power History",
-                        icon = Icons.Rounded.WbSunny,
-                        accentColor = SolarSun,
-                        items = listOf(
-                            "8:00 AM - 250 W",
-                            "10:00 AM - 390 W",
-                            "12:00 PM - 480 W",
-                            "2:00 PM - 430 W"
-                        )
-                    )
-
-                    AppTab.Cleaning -> HistoryScreen(
-                        title = "Solar Panel Cleaning History",
-                        icon = Icons.Rounded.Autorenew,
-                        accentColor = SolarGreen,
-                        items = cleaningHistory
-                    )
+                    
+                    AppTab.Records -> {
+                        val dailyRecords = fbHistory.flatMap { fbRecord ->
+                            val dateStr = sdf.format(Date(fbRecord.timestamp))
+                            listOf(
+                                DailyRecord(dateStr, "Panel 1", "${fbRecord.panel1Consumption} W", "${fbRecord.panel1Harvest} W"),
+                                DailyRecord(dateStr, "Panel 2", "${fbRecord.panel2Consumption} W", "${fbRecord.panel2Harvest} W")
+                            )
+                        }
+                        DailyRecordsScreen(dailyRecords)
+                    }
+                    
+                    AppTab.Cleaning -> {
+                        val cleaningRecords = fbCleaningHistory.map { fbRecord ->
+                            CleaningRecord(
+                                date = sdf.format(Date(fbRecord.timestamp)),
+                                time = timeSdf.format(Date(fbRecord.timestamp)),
+                                action = fbRecord.action,
+                                status = fbRecord.status
+                            )
+                        }
+                        CleaningHistoryScreen(cleaningRecords)
+                    }
                 }
             }
         }
@@ -395,7 +424,7 @@ private fun MainApp(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
+private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onToggleCleaner: () -> Unit) {
     val cleanerButtonColor by animateColorAsState(
         targetValue = if (cleanerOn) SolarGreen else MaterialTheme.colorScheme.primary,
         label = "ButtonColor"
@@ -415,19 +444,21 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(20.dp))
 
+        LivePowerChart(solarData)
+
         PanelCard(
             panelName = "Solar Panel 1",
-            consumption = "65 W",
-            harvested = "230 W"
+            consumption = "${solarData.panel1Consumption} W",
+            harvested = "${solarData.panel1Harvest} W"
         )
         
         PanelCard(
             panelName = "Solar Panel 2",
-            consumption = "55 W",
-            harvested = "220 W"
+            consumption = "${solarData.panel2Consumption} W",
+            harvested = "${solarData.panel2Harvest} W"
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         
         CardContainer {
             Row(
@@ -483,6 +514,196 @@ private fun DashboardScreen(cleanerOn: Boolean, onToggleCleaner: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LivePowerChart(liveData: SolarLiveData) {
+    val modelProducer = remember { CartesianChartModelProducer() }
+    
+    var s1ConsSamples by remember { mutableStateOf(List(12) { 0 }) }
+    var s1HarvSamples by remember { mutableStateOf(List(12) { 0 }) }
+    var s2ConsSamples by remember { mutableStateOf(List(12) { 0 }) }
+    var s2HarvSamples by remember { mutableStateOf(List(12) { 0 }) }
+
+    LaunchedEffect(liveData) {
+        s1ConsSamples = s1ConsSamples.drop(1) + liveData.panel1Consumption
+        s1HarvSamples = s1HarvSamples.drop(1) + liveData.panel1Harvest
+        s2ConsSamples = s2ConsSamples.drop(1) + liveData.panel2Consumption
+        s2HarvSamples = s2HarvSamples.drop(1) + liveData.panel2Harvest
+        
+        modelProducer.runTransaction {
+            lineSeries {
+                series(s1ConsSamples)
+                series(s1HarvSamples)
+                series(s2ConsSamples)
+                series(s2HarvSamples)
+            }
+        }
+    }
+
+    val currentTotalCons = s1ConsSamples.last() + s2ConsSamples.last()
+    val currentTotalHarv = s1HarvSamples.last() + s2HarvSamples.last()
+
+    CardContainer {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Live Power Monitoring",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "System Consumption vs Harvest (W)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(SolarGreen, CircleShape)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                LegendItem(color = SolarOrange, label = "S1 Cons")
+                LegendItem(color = SolarBlue, label = "S1 Harv")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                LegendItem(color = SolarGold, label = "S2 Cons")
+                LegendItem(color = SolarGreen, label = "S2 Harv")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+        
+        CartesianChartHost(
+            chart = rememberCartesianChart(
+                rememberLineCartesianLayer(
+                    lineProvider = LineCartesianLayer.LineProvider.series(
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarOrange)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarOrange.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarOrange), CorneredShape.Pill), size = 6.dp)
+                            )
+                        ),
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarBlue)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarBlue.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarBlue), CorneredShape.Pill), size = 6.dp)
+                            )
+                        ),
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarGold)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarGold.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarGold), CorneredShape.Pill), size = 6.dp)
+                            )
+                        ),
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarGreen)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarGreen.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarGreen), CorneredShape.Pill), size = 6.dp)
+                            )
+                        )
+                    )
+                ),
+                startAxis = VerticalAxis.rememberStart(
+                    guideline = rememberLineComponent(
+                        fill = fill(SolarOutline.copy(alpha = 0.3f)),
+                        shape = dashedShape()
+                    )
+                ),
+                bottomAxis = HorizontalAxis.rememberBottom(
+                    guideline = rememberLineComponent(
+                        fill = fill(SolarOutline.copy(alpha = 0.3f)),
+                        shape = dashedShape()
+                    )
+                )
+            ),
+            modelProducer = modelProducer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(240.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ChartStatItem(
+                icon = Icons.Rounded.Bolt,
+                color = SolarOrange,
+                value = "$currentTotalCons W",
+                label = "Total Power"
+            )
+            ChartStatItem(
+                icon = Icons.Rounded.WbSunny,
+                color = SolarBlue,
+                value = "$currentTotalHarv W",
+                label = "Total Harvest"
+            )
+            val efficiency = if (currentTotalCons > 0) (currentTotalHarv * 100 / currentTotalCons) else 0
+            ChartStatItem(
+                icon = Icons.Rounded.EnergySavingsLeaf,
+                color = SolarGreen,
+                value = "$efficiency%",
+                label = "Efficiency"
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(8.dp).background(color, CircleShape))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ChartStatItem(icon: ImageVector, color: Color, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            color = color,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -586,19 +807,22 @@ private fun CameraScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HistoryScreen(
-    title: String,
-    icon: ImageVector,
-    accentColor: Color,
-    items: List<String>
-) {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredItems = remember(searchQuery, items) {
-        if (searchQuery.isBlank()) {
-            items
-        } else {
-            items.filter { it.contains(searchQuery, ignoreCase = true) }
+private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
+    val panels = listOf("All Panels", "Panel 1", "Panel 2")
+    var selectedPanel by rememberSaveable { mutableStateOf(panels[0]) }
+    var expanded by remember { mutableStateOf(false) }
+    var selectedDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    val filteredRecords = remember(allRecords, selectedPanel, selectedDateMillis) {
+        val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+        val dateString = selectedDateMillis?.let { sdf.format(Date(it)) }
+        
+        allRecords.filter { record ->
+            val panelMatch = selectedPanel == "All Panels" || record.panel == selectedPanel
+            val dateMatch = dateString == null || record.date == dateString
+            panelMatch && dateMatch
         }
     }
 
@@ -610,74 +834,285 @@ private fun HistoryScreen(
     ) {
         item {
             Text(
-                text = title,
+                text = "Daily Records",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.ExtraBold
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search history...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
+            Text(
+                text = "Consumption and Harvest logs",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
             Spacer(modifier = Modifier.height(20.dp))
-        }
 
-        if (filteredItems.isEmpty()) {
-            item {
-                Box(
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
+                    OutlinedTextField(
+                        value = selectedPanel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Panel") },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.45f)
+                    ) {
+                        panels.forEach { panel ->
+                            DropdownMenuItem(
+                                text = { Text(panel) },
+                                onClick = {
+                                    selectedPanel = panel
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                DatePickerField(
+                    selectedDate = selectedDateMillis,
+                    onDateSelected = { selectedDateMillis = it },
+                    label = "Date",
+                    modifier = Modifier.weight(1.2f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Table Header
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+            ) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "No matching records found.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Date", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Panel", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Usage", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Harvest", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
-        } else {
-            items(filteredItems) { item ->
-                HistoryCard(item = item, icon = icon, accentColor = accentColor)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        }
+
+        items(filteredRecords.size) { index ->
+            val record = filteredRecords[index]
+            val isLast = index == filteredRecords.size - 1
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
+                    Text(record.panel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    Text(record.consumption, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
+                    Text(record.harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                }
+                if (!isLast) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HistoryCard(item: String, icon: ImageVector, accentColor: Color) {
-    CardContainer {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBadge(icon = icon, color = accentColor)
-            Spacer(modifier = Modifier.width(16.dp))
+private fun CleaningHistoryScreen(records: List<CleaningRecord>) {
+    var selectedDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    
+    val filteredRecords = remember(records, selectedDateMillis) {
+        val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+        val dateString = selectedDateMillis?.let { sdf.format(Date(it)) }
+        
+        if (dateString == null) records
+        else records.filter { it.date == dateString }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 18.dp),
+        contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
+    ) {
+        item {
             Text(
-                text = item,
-                style = MaterialTheme.typography.bodyLarge,
+                text = "Cleaning History",
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.ExtraBold
             )
+            Text(
+                text = "Logs of automated cleaning cycles",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            DatePickerField(
+                selectedDate = selectedDateMillis,
+                onDateSelected = { selectedDateMillis = it },
+                label = "Filter by Date",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Table Header
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Date", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Time", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Action", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Status", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        }
+
+        items(filteredRecords.size) { index ->
+            val record = filteredRecords[index]
+            val isLast = index == records.size - 1
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
+                    Text(record.time, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    
+                    Text(
+                        text = record.action,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (record.action == "Start") SolarGreen else SolarOrange,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = record.status,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (record.status == "Active" || record.status == "Completed") SolarGreen else SolarOrange,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                if (!isLast) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                }
+            }
         }
     }
-    Spacer(modifier = Modifier.height(12.dp))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(
+    selectedDate: Long?,
+    onDateSelected: (Long?) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    val formattedDate = remember(selectedDate) {
+        if (selectedDate != null) {
+            val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+            sdf.format(Date(selectedDate))
+        } else {
+            "All Dates"
+        }
+    }
+
+    Box(modifier = modifier.clickable {
+        val calendar = Calendar.getInstance()
+        selectedDate?.let { calendar.timeInMillis = it }
+        
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val resultCalendar = Calendar.getInstance()
+                resultCalendar.set(year, month, dayOfMonth)
+                onDateSelected(resultCalendar.timeInMillis)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }) {
+        OutlinedTextField(
+            value = formattedDate,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            leadingIcon = { Icon(Icons.Rounded.CalendarMonth, null) },
+            trailingIcon = {
+                if (selectedDate != null) {
+                    IconButton(onClick = { onDateSelected(null) }) {
+                        Icon(Icons.Rounded.Close, null)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = false,
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+    }
 }
 
 @Composable
@@ -686,17 +1121,17 @@ private fun CardContainer(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = Color.Black.copy(alpha = 0.5f),
-                spotColor = Color.Black.copy(alpha = 0.5f),
+                elevation = 16.dp,
+                shape = RoundedCornerShape(28.dp),
+                ambientColor = Color.Black,
+                spotColor = Color.Black,
                 clip = false
             ),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = SolarCardDark),
+        shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp), content = content)
+        Column(modifier = Modifier.padding(24.dp), content = content)
     }
 }
 
@@ -709,23 +1144,6 @@ private fun ScreenColumn(content: @Composable ColumnScope.() -> Unit) {
             .padding(horizontal = 18.dp, vertical = 20.dp),
         content = content
     )
-}
-
-@Composable
-private fun IconBadge(icon: ImageVector, color: Color) {
-    Box(
-        modifier = Modifier
-            .size(52.dp)
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(16.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(24.dp)
-        )
-    }
 }
 
 @Composable
@@ -773,8 +1191,7 @@ private fun PanelCard(
 private enum class AppTab(val label: String, val icon: ImageVector) {
     Dashboard("Home", Icons.Rounded.Home),
     Camera("Camera", Icons.Rounded.Videocam),
-    Consumption("Usage", Icons.Rounded.Bolt),
-    Harvest("Harvest", Icons.Rounded.WbSunny),
+    Records("Records", Icons.Rounded.TableChart),
     Cleaning("Cleaning", Icons.Rounded.Autorenew)
 }
 
@@ -782,6 +1199,6 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 @Composable
 private fun SolarGlidePreview() {
     SolarCleanerTheme {
-        SolarGlideApp()
+        SolarGlideApp(FirebaseRepository())
     }
 }

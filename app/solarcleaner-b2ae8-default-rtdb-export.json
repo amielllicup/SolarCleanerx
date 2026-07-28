@@ -1,0 +1,20 @@
+{
+  "cleanerStatus": true,
+  "history": {
+    "-N123abc": {
+      "panel1Consumption": 65,
+      "panel1Harvest": 500,
+      "panel2Consumption": 55,
+      "panel2Harvest": 220,
+      "timestamp": 1700000000000
+    }
+  },
+  "solarData": {
+    "cleanerStatus": false,
+    "panel1Consumption": 100,
+    "panel1Harvest": 500,
+    "panel2Consumption": 500,
+    "panel2Harvest": 100,
+    "timestamp": 1700000000000
+  }
+}
