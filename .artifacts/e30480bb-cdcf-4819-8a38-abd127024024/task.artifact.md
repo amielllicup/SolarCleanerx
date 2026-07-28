@@ -1,6 +1,4 @@
-- [ ] Refine `CardContainer` for a deeper dark look
-- [ ] Add dashed grid lines to `LivePowerChart` axes
-- [ ] Update `LivePowerChart` lines with smooth gradients and prominent markers
-- [ ] Enhance `ChartStatItem` typography and spacing
-- [ ] Align "Live" status dot and header text with the reference image
-- [ ] Verify build and visual quality
+- [ ] Refactor `DailyRecordsScreen` for fixed height table
+- [ ] Refactor `CleaningHistoryScreen` for fixed height table
+- [ ] Ensure table headers remain fixed
+- [ ] Verify build and scrolling behavior

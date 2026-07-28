@@ -1,29 +1,25 @@
-# Walkthrough - Premium Modern Dashboard UI
+# Walkthrough - Fixed Height Scrollable Tables
 
-I have completely overhauled the Dashboard UI to provide a high-end, premium look that matches your reference design.
+I have updated the **Daily Records** and **Cleaning History** tabs to feature fixed-height tables, making them easier to navigate and more consistent with a dashboard-style UI.
 
-## Key UI Enhancements
+## Changes Made
 
-### 1. Advanced Charting Visuals
-- **Dashed Grid Lines**: Added subtle, dashed vertical and horizontal guidelines to the power chart, giving it a technical and professional aesthetic.
-- **Refined Gradients**: Updated the area fills under the lines with smoother gradients that blend elegantly into the dark background.
-- **Prominent Markers**: Enlarged the data point "Pill" markers to make real-time fluctuations more visible and stylish.
+### 1. Fixed Height Constraints
+- Both the **Records** and **Cleaning** tables now have a fixed height of `420.dp`.
+- This ensures that the table doesn't grow indefinitely, keeping the overall screen layout organized even with a large number of data points.
 
-### 2. High-Impact Statistics
-- **Enhanced Typography**: Upgraded the bottom stats (Total Power, Harvest, Efficiency) with larger, extra-bold fonts (`headlineSmall`) to ensure they are the focal point of the dashboard.
-- **Improved Spacing**: Increased padding and vertical spacing within stat items for better readability and a less "cluttered" feel.
+### 2. Independent Scrolling
+- The **Table Headers** (Date, Panel, Usage, Harvest, etc.) now remain fixed at the top of the table.
+- Only the **Data Rows** are scrollable, allowing you to quickly browse through history while always knowing what each column represents.
 
-### 3. Premium Card Design
-- **Deep Dark Palette**: Updated all card containers to use the `SolarCardDark` color, creating better contrast and a more modern "Luxury Dark" feel.
-- **Dynamic Shadows**: Increased shadow elevation and depth (16dp with solid black ambient colors) to make components appear as if they are floating on a premium surface.
-
-### 4. Layout Consistency
-- Ensured the "Live" status dot and header text are perfectly aligned with the grid, matching the professional look of modern IoT dashboards.
+### 3. Screen Layout Optimization
+- Refactored the screens from a single list to a `Column` based layout.
+- This ensures the **Title**, **Subtitle**, and **Filters** (Panel and Date) stay permanently at the top of the screen and do not scroll away when you interact with the table.
 
 ## Verification Results
 
 ### Automated Tests
 - **Build Success**: `app:assembleDebug` completed successfully.
-- **Performance**: Verified that the new visual effects (gradients and dashed lines) remain high-performance during real-time updates.
+- **UI Logic**: Verified that the scroll behavior is restricted to the table container and that headers remain properly aligned.
 
-The dashboard now feels like a high-end solar monitoring tool!
+Your historical data is now presented in a more compact and professional "premium" widget format!

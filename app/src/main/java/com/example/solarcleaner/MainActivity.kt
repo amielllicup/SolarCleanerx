@@ -826,80 +826,80 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
         }
     }
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
+            .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
-        item {
-            Text(
-                text = "Daily Records",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                text = "Consumption and Harvest logs",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Daily Records",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Text(
+            text = "Consumption and Harvest logs",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(20.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
-                    OutlinedTextField(
-                        value = selectedPanel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Panel") },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = null
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = false,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
+                OutlinedTextField(
+                    value = selectedPanel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Panel") },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = null
                         )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                )
 
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.fillMaxWidth(0.45f)
-                    ) {
-                        panels.forEach { panel ->
-                            DropdownMenuItem(
-                                text = { Text(panel) },
-                                onClick = {
-                                    selectedPanel = panel
-                                    expanded = false
-                                }
-                            )
-                        }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(0.45f)
+                ) {
+                    panels.forEach { panel ->
+                        DropdownMenuItem(
+                            text = { Text(panel) },
+                            onClick = {
+                                selectedPanel = panel
+                                expanded = false
+                            }
+                        )
                     }
                 }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                DatePickerField(
-                    selectedDate = selectedDateMillis,
-                    onDateSelected = { selectedDateMillis = it },
-                    label = "Date",
-                    modifier = Modifier.weight(1.2f)
-                )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
             
-            // Table Header
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            DatePickerField(
+                selectedDate = selectedDateMillis,
+                onDateSelected = { selectedDateMillis = it },
+                label = "Date",
+                modifier = Modifier.weight(1.2f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Fixed Height Table Container
+        Column(modifier = Modifier.fillMaxWidth().height(420.dp)) {
+            // Table Header (Fixed)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -918,30 +918,37 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-        }
 
-        items(filteredRecords.size) { index ->
-            val record = filteredRecords[index]
-            val isLast = index == filteredRecords.size - 1
-            
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            // Scrollable Data Rows
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f) // Fills the remaining 420.dp space
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
-                    Text(record.panel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                    Text(record.consumption, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
-                    Text(record.harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
-                }
-                if (!isLast) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                items(filteredRecords.size) { index ->
+                    val record = filteredRecords[index]
+                    val isLast = index == filteredRecords.size - 1
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
+                            Text(record.panel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            Text(record.consumption, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
+                            Text(record.harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                        }
+                        if (!isLast) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        }
+                    }
                 }
             }
         }
@@ -961,36 +968,36 @@ private fun CleaningHistoryScreen(records: List<CleaningRecord>) {
         else records.filter { it.date == dateString }
     }
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
+            .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
-        item {
-            Text(
-                text = "Cleaning History",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                text = "Logs of automated cleaning cycles",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Cleaning History",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Text(
+            text = "Logs of automated cleaning cycles",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(20.dp))
 
-            DatePickerField(
-                selectedDate = selectedDateMillis,
-                onDateSelected = { selectedDateMillis = it },
-                label = "Filter by Date",
-                modifier = Modifier.fillMaxWidth()
-            )
+        DatePickerField(
+            selectedDate = selectedDateMillis,
+            onDateSelected = { selectedDateMillis = it },
+            label = "Filter by Date",
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Table Header
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Fixed Height Table Container
+        Column(modifier = Modifier.fillMaxWidth().height(420.dp)) {
+            // Table Header (Fixed)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -1009,44 +1016,51 @@ private fun CleaningHistoryScreen(records: List<CleaningRecord>) {
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-        }
 
-        items(filteredRecords.size) { index ->
-            val record = filteredRecords[index]
-            val isLast = index == records.size - 1
-            
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            // Scrollable Data Rows
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
-                    Text(record.time, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                items(filteredRecords.size) { index ->
+                    val record = filteredRecords[index]
+                    val isLast = index == filteredRecords.size - 1
                     
-                    Text(
-                        text = record.action,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (record.action == "Start") SolarGreen else SolarOrange,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text(
-                        text = record.status,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (record.status == "Active" || record.status == "Completed") SolarGreen else SolarOrange,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                if (!isLast) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
+                            Text(record.time, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            
+                            Text(
+                                text = record.action,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (record.action == "Start") SolarGreen else SolarOrange,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Text(
+                                text = record.status,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (record.status == "Active" || record.status == "Completed") SolarGreen else SolarOrange,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (!isLast) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        }
+                    }
                 }
             }
         }

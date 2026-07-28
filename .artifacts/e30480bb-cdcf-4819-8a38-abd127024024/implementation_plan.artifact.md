@@ -1,37 +1,29 @@
-# Implementation Plan - Premium Modern Dashboard UI
+# Implementation Plan - Fixed Height Scrollable Tables
 
-This plan aims to refine the Dashboard and Live Power Chart UI to achieve a "premium modern look" based on the provided reference image.
+This plan modifies the **Daily Records** and **Cleaning History** screens to have a fixed height for the data tables, making them scrollable only within that restricted area.
 
 ## Proposed Changes
 
-### [Component] Theming & Layout
+### [Component] Daily Records Screen
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Card Background**: Update `CardContainer` to use a darker, more defined background color (matching the "Premium" aesthetic in the image).
-- **Typography**: Use larger, bolder fonts for primary metrics like "Total Power".
+- Convert the main container from a `LazyColumn` to a standard `Column`.
+- Keep the Title, Subtitle, and Filter row at the top.
+- Place the **Table Header** and **Data Rows** inside a dedicated container with a fixed height (e.g., 400.dp).
+- Use a `LazyColumn` for the data rows within this fixed-height container to ensure only the table content scrolls.
 
-### [Component] Live Power Chart (Vico Enhancement)
-
-#### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Grid Lines**: Configure `VerticalAxis` and `HorizontalAxis` to use **dashed guidelines** (`dashedShape()`) for a clean, technical look.
-- **Line Styling**:
-    - Ensure lines are smooth (though standard lines are also fine if styled correctly).
-    - Refine **Area Fills**: Use subtle gradients that fade into the background.
-    - **Point Markers**: Size them to match the "Pill" shape in the image, ensuring they are prominent but not distracting.
-- **X-Axis**: Format labels as hours/indices as seen in the reference image (4, 5, 6, ...).
-
-### [Component] Live Stats Bar
+### [Component] Cleaning History Screen
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Stats Styling**:
-    - Increase font size for the numeric values (e.g., "1100 W").
-    - Match colors exactly: Orange for Total Power, Blue for Harvest, Green for Efficiency.
-    - Ensure icons are perfectly aligned and sized.
+- Similar to the Records screen, convert the main layout to a `Column`.
+- Move the **Table Header** out of the scrollable area so it remains fixed at the top of the table.
+- Wrap the cleaning log rows in a `LazyColumn` with a fixed height.
 
 ## Verification Plan
 
 ### Manual Verification
-- Deploy to emulator/device.
-- Compare the live app side-by-side with the user's reference image.
-- Verify the "Live" status dot is correctly positioned and pulsing if possible.
-- Ensure the chart remains responsive with the new styling.
+- Deploy to device.
+- Navigate to "Records" and "Cleaning" tabs.
+- Verify that the screen headers (Title/Filters) stay fixed.
+- Verify that the table has a defined height and you can scroll through the records within that box.
+- Confirm the layout looks consistent with the "Premium Modern" aesthetic.
