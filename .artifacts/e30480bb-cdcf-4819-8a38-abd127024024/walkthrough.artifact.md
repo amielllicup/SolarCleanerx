@@ -1,25 +1,32 @@
-# Walkthrough - Fixed Height Scrollable Tables
+# Walkthrough - Categorical Bar Chart UI
 
-I have updated the **Daily Records** and **Cleaning History** tabs to feature fixed-height tables, making them easier to navigate and more consistent with a dashboard-style UI.
+I have converted the Live Power Monitoring chart from a line graph to a categorical bar (column) chart, matching your reference design and requirements.
 
-## Changes Made
+## Key UI Enhancements
 
-### 1. Fixed Height Constraints
-- Both the **Records** and **Cleaning** tables now have a fixed height of `420.dp`.
-- This ensures that the table doesn't grow indefinitely, keeping the overall screen layout organized even with a large number of data points.
+### 1. Categorical Bar Visualization
+- **Grouped Bars**: The chart now displays three distinct bars side-by-side for a clear comparison:
+    - **Consumption** (Orange)
+    - **S1 Harvest** (Blue)
+    - **S2 Harvest** (Blue)
+- **Rounded Styling**: Each bar features rounded top corners, matching the premium "Pill" aesthetic seen in your reference image.
 
-### 2. Independent Scrolling
-- The **Table Headers** (Date, Panel, Usage, Harvest, etc.) now remain fixed at the top of the table.
-- Only the **Data Rows** are scrollable, allowing you to quickly browse through history while always knowing what each column represents.
+### 2. Labeled X-Axis
+- **Clear Identification**: Replaced time-based indices with direct text labels: **Cons.**, **S1 Harv.**, and **S2 Harv.**
+- This allows you to instantly see which system metric each bar represents without referring to a legend.
 
-### 3. Screen Layout Optimization
-- Refactored the screens from a single list to a `Column` based layout.
-- This ensures the **Title**, **Subtitle**, and **Filters** (Panel and Date) stay permanently at the top of the screen and do not scroll away when you interact with the table.
+### 3. Layout Stability
+- **Fixed Width**: The chart is locked to the screen width with scrolling disabled.
+- **Auto-Fit**: All 3 bars are always visible and perfectly centered, ensuring a stable and professional dashboard experience.
+
+### 4. Code Robustness
+- **Efficient Data Mapping**: Updated the Firebase integration to push the latest reading as a set of categorical series, ensuring real-time responsiveness.
+- **Type Safety**: Fixed several type-mismatch and parameter order issues in the charting library integration to prevent runtime crashes.
 
 ## Verification Results
 
 ### Automated Tests
 - **Build Success**: `app:assembleDebug` completed successfully.
-- **UI Logic**: Verified that the scroll behavior is restricted to the table container and that headers remain properly aligned.
+- **Library Integration**: Verified that Vico's `ColumnCartesianLayer` is correctly configured with the premium theme.
 
-Your historical data is now presented in a more compact and professional "premium" widget format!
+The dashboard now provides a powerful, high-contrast bar graph for real-time power monitoring!

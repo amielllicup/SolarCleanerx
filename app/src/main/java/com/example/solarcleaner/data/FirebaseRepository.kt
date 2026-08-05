@@ -9,19 +9,25 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 data class SolarLiveData(
-    val cleanerStatus: Boolean = false,
-    val panel1Consumption: Int = 0,
-    val panel1Harvest: Int = 0,
-    val panel2Consumption: Int = 0,
-    val panel2Harvest: Int = 0,
-    val timestamp: Long = 0
+    val batteryPercent: Int = 0,
+    val batteryVoltage: Double = 0.0,
+    val consumptionPercent: Int = 0,
+    val harvestPercent: Int = 0,
+    val harvestVoltage: Double = 0.0,
+    val remainingEnergy: Int = 0,
+    val solar1Voltage: Double = 0.0,
+    val solar2Voltage: Double = 0.0
 )
 
 data class FirebaseHistoryRecord(
-    val panel1Consumption: Int = 0,
-    val panel1Harvest: Int = 0,
-    val panel2Consumption: Int = 0,
-    val panel2Harvest: Int = 0,
+    val batteryPercent: Int = 0,
+    val batteryVoltage: Double = 0.0,
+    val consumptionPercent: Int = 0,
+    val harvestPercent: Int = 0,
+    val harvestVoltage: Double = 0.0,
+    val remainingEnergy: Int = 0,
+    val solar1Voltage: Double = 0.0,
+    val solar2Voltage: Double = 0.0,
     val timestamp: Long = 0
 )
 
@@ -33,7 +39,7 @@ data class FirebaseCleaningRecord(
 
 class FirebaseRepository {
     private val database by lazy { FirebaseDatabase.getInstance() }
-    private val solarDataRef by lazy { database.getReference("solarData") }
+    private val solarDataRef by lazy { database.getReference("SolarMonitor") }
     private val cleanerStatusRef by lazy { database.getReference("cleanerStatus") }
     private val historyRef by lazy { database.getReference("history") }
     private val cleaningHistoryRef by lazy { database.getReference("cleaningHistory") }

@@ -41,6 +41,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.SolarPower
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -109,7 +111,9 @@ import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
@@ -118,10 +122,8 @@ import com.patrykandpatrick.vico.compose.common.shape.dashedShape
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.point
+import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import com.example.solarcleaner.R
 import com.example.solarcleaner.data.FirebaseRepository
@@ -399,8 +401,8 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
                         val dailyRecords = fbHistory.flatMap { fbRecord ->
                             val dateStr = sdf.format(Date(fbRecord.timestamp))
                             listOf(
-                                DailyRecord(dateStr, "Panel 1", "${fbRecord.panel1Consumption} W", "${fbRecord.panel1Harvest} W"),
-                                DailyRecord(dateStr, "Panel 2", "${fbRecord.panel2Consumption} W", "${fbRecord.panel2Harvest} W")
+                                DailyRecord(dateStr, "Panel 1", "${fbRecord.consumptionPercent}%", "${fbRecord.harvestPercent}%"),
+                                DailyRecord(dateStr, "Panel 2", "---", String.format(Locale.getDefault(), "%.2fV", fbRecord.harvestVoltage))
                             )
                         }
                         DailyRecordsScreen(dailyRecords)
@@ -448,18 +450,14 @@ private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onTogg
 
         PanelCard(
             panelName = "Solar Panel 1",
-            consumption = "${solarData.panel1Consumption} W",
-            harvested = "${solarData.panel1Harvest} W"
+            harvested = "${solarData.harvestPercent}%"
         )
         
         PanelCard(
             panelName = "Solar Panel 2",
-            consumption = "${solarData.panel2Consumption} W",
-            harvested = "${solarData.panel2Harvest} W"
+            harvested = String.format(Locale.getDefault(), "%.2f V", solarData.harvestVoltage)
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
-        
         CardContainer {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -521,29 +519,15 @@ private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onTogg
 private fun LivePowerChart(liveData: SolarLiveData) {
     val modelProducer = remember { CartesianChartModelProducer() }
     
-    var s1ConsSamples by remember { mutableStateOf(List(12) { 0 }) }
-    var s1HarvSamples by remember { mutableStateOf(List(12) { 0 }) }
-    var s2ConsSamples by remember { mutableStateOf(List(12) { 0 }) }
-    var s2HarvSamples by remember { mutableStateOf(List(12) { 0 }) }
-
     LaunchedEffect(liveData) {
-        s1ConsSamples = s1ConsSamples.drop(1) + liveData.panel1Consumption
-        s1HarvSamples = s1HarvSamples.drop(1) + liveData.panel1Harvest
-        s2ConsSamples = s2ConsSamples.drop(1) + liveData.panel2Consumption
-        s2HarvSamples = s2HarvSamples.drop(1) + liveData.panel2Harvest
-        
         modelProducer.runTransaction {
-            lineSeries {
-                series(s1ConsSamples)
-                series(s1HarvSamples)
-                series(s2ConsSamples)
-                series(s2HarvSamples)
+            columnSeries {
+                series(liveData.consumptionPercent.toFloat())
+                series(liveData.harvestPercent.toFloat())
+                series(liveData.harvestVoltage.toFloat())
             }
         }
     }
-
-    val currentTotalCons = s1ConsSamples.last() + s2ConsSamples.last()
-    val currentTotalHarv = s1HarvSamples.last() + s2HarvSamples.last()
 
     CardContainer {
         Row(
@@ -552,13 +536,13 @@ private fun LivePowerChart(liveData: SolarLiveData) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Live Power Monitoring",
+                    text = "Live System Monitoring",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "System Consumption vs Harvest (W)",
+                    text = "Current Performance Overview",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -572,53 +556,23 @@ private fun LivePowerChart(liveData: SolarLiveData) {
 
         Spacer(modifier = Modifier.height(16.dp))
         
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                LegendItem(color = SolarOrange, label = "S1 Cons")
-                LegendItem(color = SolarBlue, label = "S1 Harv")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                LegendItem(color = SolarGold, label = "S2 Cons")
-                LegendItem(color = SolarGreen, label = "S2 Harv")
-            }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+            LegendItem(color = SolarOrange, label = "Consumption")
+            LegendItem(color = SolarBlue, label = "S1 Harvest")
+            LegendItem(color = SolarBlue, label = "S2 Harvest")
         }
 
         Spacer(modifier = Modifier.height(18.dp))
         
         CartesianChartHost(
             chart = rememberCartesianChart(
-                rememberLineCartesianLayer(
-                    lineProvider = LineCartesianLayer.LineProvider.series(
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(fill(SolarOrange)),
-                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarOrange.copy(alpha = 0.15f))),
-                            pointProvider = LineCartesianLayer.PointProvider.single(
-                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarOrange), CorneredShape.Pill), size = 6.dp)
-                            )
-                        ),
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(fill(SolarBlue)),
-                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarBlue.copy(alpha = 0.15f))),
-                            pointProvider = LineCartesianLayer.PointProvider.single(
-                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarBlue), CorneredShape.Pill), size = 6.dp)
-                            )
-                        ),
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(fill(SolarGold)),
-                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarGold.copy(alpha = 0.15f))),
-                            pointProvider = LineCartesianLayer.PointProvider.single(
-                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarGold), CorneredShape.Pill), size = 6.dp)
-                            )
-                        ),
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(fill(SolarGreen)),
-                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarGreen.copy(alpha = 0.15f))),
-                            pointProvider = LineCartesianLayer.PointProvider.single(
-                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarGreen), CorneredShape.Pill), size = 6.dp)
-                            )
-                        )
-                    )
+                rememberColumnCartesianLayer(
+                    columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                        rememberLineComponent(fill(SolarOrange), 24.dp, CorneredShape.rounded(allPercent = 40)),
+                        rememberLineComponent(fill(SolarBlue), 24.dp, CorneredShape.rounded(allPercent = 40)),
+                        rememberLineComponent(fill(SolarBlue), 24.dp, CorneredShape.rounded(allPercent = 40))
+                    ),
+                    columnCollectionSpacing = 32.dp
                 ),
                 startAxis = VerticalAxis.rememberStart(
                     guideline = rememberLineComponent(
@@ -627,16 +581,23 @@ private fun LivePowerChart(liveData: SolarLiveData) {
                     )
                 ),
                 bottomAxis = HorizontalAxis.rememberBottom(
-                    guideline = rememberLineComponent(
-                        fill = fill(SolarOutline.copy(alpha = 0.3f)),
-                        shape = dashedShape()
-                    )
+                    valueFormatter = { _, value, _ ->
+                        when (value.toInt()) {
+                            0 -> "Cons."
+                            1 -> "S1 Harv."
+                            2 -> "S2 Harv."
+                            else -> ""
+                        }
+                    },
+                    guideline = null
                 )
             ),
             modelProducer = modelProducer,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(240.dp)
+                .height(240.dp),
+            scrollState = rememberVicoScrollState(scrollEnabled = false),
+            zoomState = rememberVicoZoomState(zoomEnabled = false)
         )
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -649,21 +610,20 @@ private fun LivePowerChart(liveData: SolarLiveData) {
             ChartStatItem(
                 icon = Icons.Rounded.Bolt,
                 color = SolarOrange,
-                value = "$currentTotalCons W",
-                label = "Total Power"
+                value = "${liveData.consumptionPercent}%",
+                label = "Consumption"
             )
             ChartStatItem(
-                icon = Icons.Rounded.WbSunny,
+                icon = Icons.Rounded.LightMode,
                 color = SolarBlue,
-                value = "$currentTotalHarv W",
-                label = "Total Harvest"
+                value = "${liveData.harvestPercent}%",
+                label = "S1 Harvest"
             )
-            val efficiency = if (currentTotalCons > 0) (currentTotalHarv * 100 / currentTotalCons) else 0
             ChartStatItem(
-                icon = Icons.Rounded.EnergySavingsLeaf,
+                icon = Icons.Rounded.SolarPower,
                 color = SolarGreen,
-                value = "$efficiency%",
-                label = "Efficiency"
+                value = String.format(Locale.getDefault(), "%.2fV", liveData.harvestVoltage),
+                label = "S2 Harvest"
             )
         }
     }
@@ -1086,8 +1046,9 @@ private fun DatePickerField(
         }
     }
 
-    Box(modifier = modifier.clickable {
-        val calendar = Calendar.getInstance()
+    Box(
+        modifier = modifier.clickable {
+            val calendar = Calendar.getInstance()
         selectedDate?.let { calendar.timeInMillis = it }
         
         android.app.DatePickerDialog(
@@ -1174,7 +1135,6 @@ private fun SolarGlideLogo(modifier: Modifier = Modifier) {
 @Composable
 private fun PanelCard(
     panelName: String,
-    consumption: String,
     harvested: String
 ) {
     CardContainer {
@@ -1185,13 +1145,6 @@ private fun PanelCard(
             fontWeight = FontWeight.ExtraBold
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Bolt, null, tint = SolarOrange, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("Power Consumption: ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(consumption, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.WbSunny, null, tint = SolarBlue, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(10.dp))

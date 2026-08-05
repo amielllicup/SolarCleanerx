@@ -1,20 +1,145 @@
 {
-  "cleanerStatus": true,
-  "history": {
-    "-N123abc": {
-      "panel1Consumption": 65,
-      "panel1Harvest": 500,
-      "panel2Consumption": 55,
-      "panel2Harvest": 220,
-      "timestamp": 1700000000000
-    }
+  "SolarMonitor": {
+    "batteryPercent": 0,
+    "batteryVoltage": 0.01252,
+    "consumptionPercent": 100,
+    "harvestPercent": 0,
+    "harvestVoltage": 0.1158,
+    "remainingEnergy": 0,
+    "solar1Voltage": 0.03108,
+    "solar2Voltage": 0.20052
   },
-  "solarData": {
-    "cleanerStatus": false,
-    "panel1Consumption": 100,
-    "panel1Harvest": 500,
-    "panel2Consumption": 500,
-    "panel2Harvest": 100,
-    "timestamp": 1700000000000
+  "cleanerStatus": false,
+  "cleaningHistory": {
+    "-OyaLnL_fFMcB7VsFdHU": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202420380
+    },
+    "-OyaLpA3P32HjwFqY4C2": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202427835
+    },
+    "-OyaLttlKZPPJz0L5Rcp": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202447208
+    },
+    "-OyaLu8PtlNzI6OU6q1O": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202448209
+    },
+    "-OyaLuJN4IFzAEOqN9zp": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202448911
+    },
+    "-OyaLuUFaQ3lMqjtfwes": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202449607
+    },
+    "-OybSNSAXO6yqYl9hLpv": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785220921034
+    },
+    "-OybSPEk-Q6rNnvzb_mP": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785220928367
+    },
+    "-OybWNLlmVWNll6YbB8y": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221969196
+    },
+    "-OybWNUtRnG5TMaMq-Wl": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221969780
+    },
+    "-OybWN_vZ5BE2rxXcEYw": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221970166
+    },
+    "-OybWNeSN7uchr4vpomo": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221970456
+    },
+    "-OybWNhviCAdUkzVfQ_9": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221970678
+    },
+    "-OybWNkql32JHDMWSzvl": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221970865
+    },
+    "-OybWNn38VHxhnLboncj": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221971007
+    },
+    "-OybWNs-TrcX7z6DNjuy": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221971323
+    },
+    "-OybWO-VwfrSa_Rbmuy_": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221971867
+    },
+    "-OybWOi0Szoh160C1TOy": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221974780
+    },
+    "-OybWPPGXUYaTSAXqbql": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221977612
+    },
+    "-OybWQqQsK3v_TCMFCaN": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221983510
+    },
+    "-OybWR2Af5kECT0S2mVV": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221984326
+    },
+    "-OybWTHnTirGKxKddc4c": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221993518
+    },
+    "-OybWTklZ0eoygXFcIRk": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221995436
+    },
+    "-Oyba6NKWD4Cuc1fGqVL": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785223210383
+    },
+    "-Oyba73W1Ni7vBpAryCD": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785223213212
+    },
+    "-Oyba7iLAhdnKqMcbgLK": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785223215889
+    }
   }
 }

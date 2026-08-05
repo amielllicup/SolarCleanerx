@@ -1,4 +1,6 @@
-- [ ] Refactor `DailyRecordsScreen` for fixed height table
-- [ ] Refactor `CleaningHistoryScreen` for fixed height table
-- [ ] Ensure table headers remain fixed
-- [ ] Verify build and scrolling behavior
+- [ ] Import `rememberColumnCartesianLayer` and `columnSeries`
+- [ ] Refactor `LivePowerChart` to use a Bar (Column) graph
+- [ ] Configure 3 distinct bars: Orange (Consumption), Blue (S1), Blue (S2)
+- [ ] Implement X-Axis labels: "Consumption", "S1 Harvest", "S2 Harvest"
+- [ ] Set rounded top corners for bars
+- [ ] Verify build and live data updates
