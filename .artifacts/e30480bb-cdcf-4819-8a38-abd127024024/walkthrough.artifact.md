@@ -1,32 +1,26 @@
-# Walkthrough - Categorical Bar Chart UI
+# Walkthrough - Automated History Logging
 
-I have converted the Live Power Monitoring chart from a line graph to a categorical bar (column) chart, matching your reference design and requirements.
+I have implemented the automated history logging feature, allowing your app to automatically record snapshots of your solar system's performance to Firebase.
 
-## Key UI Enhancements
+## Key Changes
 
-### 1. Categorical Bar Visualization
-- **Grouped Bars**: The chart now displays three distinct bars side-by-side for a clear comparison:
-    - **Consumption** (Orange)
-    - **S1 Harvest** (Blue)
-    - **S2 Harvest** (Blue)
-- **Rounded Styling**: Each bar features rounded top corners, matching the premium "Pill" aesthetic seen in your reference image.
+### 1. Smart Logging Engine
+- **[FirebaseRepository.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/data/FirebaseRepository.kt)**: Added the `autoLogHistory` function.
+- **5-Minute Cooldown**: The engine checks the last recorded entry in your Firebase `history` node. It will only write a new entry if at least **5 minutes** have passed, ensuring a consistent and clean data trail (12 points per hour).
+- **Comprehensive Data**: Each log entry includes Consumption %, S1 Harvest %, S2 Harvest V, Battery Status, and a high-precision timestamp.
 
-### 2. Labeled X-Axis
-- **Clear Identification**: Replaced time-based indices with direct text labels: **Cons.**, **S1 Harv.**, and **S2 Harv.**
-- This allows you to instantly see which system metric each bar represents without referring to a legend.
+### 2. Background Automation
+- **[MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)**: Integrated a `LaunchedEffect` in the main application flow that monitors your live solar data.
+- **Silent Updates**: The logging happens automatically in the background as long as the app is open, without interrupting your user experience.
 
-### 3. Layout Stability
-- **Fixed Width**: The chart is locked to the screen width with scrolling disabled.
-- **Auto-Fit**: All 3 bars are always visible and perfectly centered, ensuring a stable and professional dashboard experience.
-
-### 4. Code Robustness
-- **Efficient Data Mapping**: Updated the Firebase integration to push the latest reading as a set of categorical series, ensuring real-time responsiveness.
-- **Type Safety**: Fixed several type-mismatch and parameter order issues in the charting library integration to prevent runtime crashes.
+### 3. Integrated Live Ecosystem
+- **Real-time Chart Sync**: Since your Live Power chart is now powered by the `history` node, these automated logs will cause the chart to grow and update in real-time as new data points are recorded.
+- **Persistent Records**: All automated logs are instantly available in the **Records** tab for historical review and filtering.
 
 ## Verification Results
 
 ### Automated Tests
 - **Build Success**: `app:assembleDebug` completed successfully.
-- **Library Integration**: Verified that Vico's `ColumnCartesianLayer` is correctly configured with the premium theme.
+- **Database Logic**: Verified the "limitToLast(1)" check to prevent duplicate entries within the same time window.
 
-The dashboard now provides a powerful, high-contrast bar graph for real-time power monitoring!
+Your app is now fully self-sufficient in maintaining its own performance history!

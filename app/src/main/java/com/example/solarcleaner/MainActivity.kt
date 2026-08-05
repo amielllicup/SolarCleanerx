@@ -113,7 +113,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
@@ -122,8 +122,10 @@ import com.patrykandpatrick.vico.compose.common.shape.dashedShape
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
-import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
+import com.patrykandpatrick.vico.compose.cartesian.layer.point
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import com.example.solarcleaner.R
 import com.example.solarcleaner.data.FirebaseRepository
@@ -315,6 +317,13 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
     val sdf = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
     val timeSdf = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
+    // Automated History Logger
+    LaunchedEffect(solarLiveData) {
+        solarLiveData?.let {
+            repository.autoLogHistory(it)
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -392,6 +401,7 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
                     AppTab.Dashboard -> DashboardScreen(
                         cleanerOn = cleanerOn,
                         solarData = solarLiveData ?: SolarLiveData(),
+                        history = fbHistory,
                         onToggleCleaner = { repository.toggleCleaner(!cleanerOn) }
                     )
 
@@ -426,7 +436,12 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
 }
 
 @Composable
-private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onToggleCleaner: () -> Unit) {
+private fun DashboardScreen(
+    cleanerOn: Boolean, 
+    solarData: SolarLiveData, 
+    history: List<FirebaseHistoryRecord>,
+    onToggleCleaner: () -> Unit
+) {
     val cleanerButtonColor by animateColorAsState(
         targetValue = if (cleanerOn) SolarGreen else MaterialTheme.colorScheme.primary,
         label = "ButtonColor"
@@ -446,7 +461,7 @@ private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onTogg
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        LivePowerChart(solarData)
+        LivePowerChart(history, solarData)
 
         PanelCard(
             panelName = "Solar Panel 1",
@@ -516,15 +531,38 @@ private fun DashboardScreen(cleanerOn: Boolean, solarData: SolarLiveData, onTogg
 }
 
 @Composable
-private fun LivePowerChart(liveData: SolarLiveData) {
+private fun LivePowerChart(history: List<FirebaseHistoryRecord>, liveData: SolarLiveData) {
     val modelProducer = remember { CartesianChartModelProducer() }
     
-    LaunchedEffect(liveData) {
-        modelProducer.runTransaction {
-            columnSeries {
-                series(liveData.consumptionPercent.toFloat())
-                series(liveData.harvestPercent.toFloat())
-                series(liveData.harvestVoltage.toFloat())
+    // Filter history for current day
+    val todayRecords = remember(history) {
+        val calendar = Calendar.getInstance()
+        val today = calendar.get(Calendar.DAY_OF_YEAR)
+        val year = calendar.get(Calendar.YEAR)
+        
+        history.filter { record ->
+            val recordCal = Calendar.getInstance().apply { timeInMillis = record.timestamp }
+            recordCal.get(Calendar.DAY_OF_YEAR) == today && recordCal.get(Calendar.YEAR) == year
+        }.sortedBy { it.timestamp }
+    }
+
+    LaunchedEffect(todayRecords) {
+        if (todayRecords.isNotEmpty()) {
+            modelProducer.runTransaction {
+                lineSeries {
+                    series(
+                        x = todayRecords.map { it.timestamp.toFloat() },
+                        y = todayRecords.map { it.consumptionPercent.toFloat() }
+                    )
+                    series(
+                        x = todayRecords.map { it.timestamp.toFloat() },
+                        y = todayRecords.map { it.harvestPercent.toFloat() }
+                    )
+                    series(
+                        x = todayRecords.map { it.timestamp.toFloat() },
+                        y = todayRecords.map { it.harvestVoltage.toFloat() }
+                    )
+                }
             }
         }
     }
@@ -542,7 +580,7 @@ private fun LivePowerChart(liveData: SolarLiveData) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Current Performance Overview",
+                    text = "Today's Performance Overview",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -559,20 +597,37 @@ private fun LivePowerChart(liveData: SolarLiveData) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             LegendItem(color = SolarOrange, label = "Consumption")
             LegendItem(color = SolarBlue, label = "S1 Harvest")
-            LegendItem(color = SolarBlue, label = "S2 Harvest")
+            LegendItem(color = SolarGreen, label = "S2 Harvest")
         }
 
         Spacer(modifier = Modifier.height(18.dp))
         
         CartesianChartHost(
             chart = rememberCartesianChart(
-                rememberColumnCartesianLayer(
-                    columnProvider = ColumnCartesianLayer.ColumnProvider.series(
-                        rememberLineComponent(fill(SolarOrange), 24.dp, CorneredShape.rounded(allPercent = 40)),
-                        rememberLineComponent(fill(SolarBlue), 24.dp, CorneredShape.rounded(allPercent = 40)),
-                        rememberLineComponent(fill(SolarBlue), 24.dp, CorneredShape.rounded(allPercent = 40))
-                    ),
-                    columnCollectionSpacing = 32.dp
+                rememberLineCartesianLayer(
+                    lineProvider = LineCartesianLayer.LineProvider.series(
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarOrange)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarOrange.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarOrange), CorneredShape.Pill), size = 6.dp)
+                            )
+                        ),
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarBlue)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarBlue.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarBlue), CorneredShape.Pill), size = 6.dp)
+                            )
+                        ),
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(SolarGreen)),
+                            areaFill = LineCartesianLayer.AreaFill.single(fill(SolarGreen.copy(alpha = 0.15f))),
+                            pointProvider = LineCartesianLayer.PointProvider.single(
+                                LineCartesianLayer.point(rememberShapeComponent(fill(SolarGreen), CorneredShape.Pill), size = 6.dp)
+                            )
+                        )
+                    )
                 ),
                 startAxis = VerticalAxis.rememberStart(
                     guideline = rememberLineComponent(
@@ -582,14 +637,13 @@ private fun LivePowerChart(liveData: SolarLiveData) {
                 ),
                 bottomAxis = HorizontalAxis.rememberBottom(
                     valueFormatter = { _, value, _ ->
-                        when (value.toInt()) {
-                            0 -> "Cons."
-                            1 -> "S1 Harv."
-                            2 -> "S2 Harv."
-                            else -> ""
-                        }
+                        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        sdf.format(Date(value.toLong()))
                     },
-                    guideline = null
+                    guideline = rememberLineComponent(
+                        fill = fill(SolarOutline.copy(alpha = 0.3f)),
+                        shape = dashedShape()
+                    )
                 )
             ),
             modelProducer = modelProducer,
@@ -621,7 +675,7 @@ private fun LivePowerChart(liveData: SolarLiveData) {
             )
             ChartStatItem(
                 icon = Icons.Rounded.SolarPower,
-                color = SolarGreen,
+                color = SolarBlue,
                 value = String.format(Locale.getDefault(), "%.2fV", liveData.harvestVoltage),
                 label = "S2 Harvest"
             )

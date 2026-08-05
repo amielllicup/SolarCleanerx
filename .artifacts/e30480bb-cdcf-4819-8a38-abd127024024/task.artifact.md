@@ -1,6 +1,4 @@
-- [ ] Import `rememberColumnCartesianLayer` and `columnSeries`
-- [ ] Refactor `LivePowerChart` to use a Bar (Column) graph
-- [ ] Configure 3 distinct bars: Orange (Consumption), Blue (S1), Blue (S2)
-- [ ] Implement X-Axis labels: "Consumption", "S1 Harvest", "S2 Harvest"
-- [ ] Set rounded top corners for bars
-- [ ] Verify build and live data updates
+- [x] Implement `autoLogHistory` with cooldown logic in `FirebaseRepository.kt`
+- [x] Add background logging `LaunchedEffect` to `MainApp` in `MainActivity.kt`
+- [x] Verify automated database writes in Firebase
+- [x] Verify real-time chart updates with new logs

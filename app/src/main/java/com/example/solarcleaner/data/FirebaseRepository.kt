@@ -123,4 +123,31 @@ class FirebaseRepository {
     fun addHistoryRecord(record: FirebaseHistoryRecord) {
         historyRef.push().setValue(record)
     }
+
+    fun autoLogHistory(data: SolarLiveData) {
+        // Only log if we have valid data (timestamp > 0 is a good indicator from hardware)
+        // or just rely on the app's current time.
+        
+        historyRef.limitToLast(1).get().addOnSuccessListener { snapshot ->
+            val lastRecord = snapshot.children.firstOrNull()?.getValue(FirebaseHistoryRecord::class.java)
+            val currentTime = System.currentTimeMillis()
+            
+            // Check if 5 minutes (300,000 ms) have passed since the last record
+            val fiveMinutesInMillis = 5 * 60 * 1000
+            if (lastRecord == null || (currentTime - lastRecord.timestamp) >= fiveMinutesInMillis) {
+                val newRecord = FirebaseHistoryRecord(
+                    batteryPercent = data.batteryPercent,
+                    batteryVoltage = data.batteryVoltage,
+                    consumptionPercent = data.consumptionPercent,
+                    harvestPercent = data.harvestPercent,
+                    harvestVoltage = data.harvestVoltage,
+                    remainingEnergy = data.remainingEnergy,
+                    solar1Voltage = data.solar1Voltage,
+                    solar2Voltage = data.solar2Voltage,
+                    timestamp = currentTime
+                )
+                addHistoryRecord(newRecord)
+            }
+        }
+    }
 }
