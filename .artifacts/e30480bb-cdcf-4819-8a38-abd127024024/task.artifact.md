@@ -1,4 +1,4 @@
-- [x] Implement `autoLogHistory` with cooldown logic in `FirebaseRepository.kt`
-- [x] Add background logging `LaunchedEffect` to `MainApp` in `MainActivity.kt`
-- [x] Verify automated database writes in Firebase
-- [x] Verify real-time chart updates with new logs
+- [x] Add non-zero validation to `autoLogHistory` in `FirebaseRepository.kt`
+- [x] Refine logging trigger in `MainActivity.kt`
+- [x] Verify Dashboard and Records consistency
+- [x] Build and verify

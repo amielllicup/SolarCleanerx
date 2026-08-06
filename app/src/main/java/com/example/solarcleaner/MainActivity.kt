@@ -137,9 +137,10 @@ import kotlin.random.Random
 
 private data class DailyRecord(
     val date: String,
-    val panel: String,
+    val time: String,
     val consumption: String,
-    val harvest: String
+    val s1Harvest: String,
+    val s2Harvest: String
 )
 
 private data class CleaningRecord(
@@ -320,6 +321,8 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
     // Automated History Logger
     LaunchedEffect(solarLiveData) {
         solarLiveData?.let {
+            // Small delay to ensure live data has stabilized after initial Firebase handshake
+            delay(500)
             repository.autoLogHistory(it)
         }
     }
@@ -408,11 +411,15 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
                     AppTab.Camera -> CameraScreen()
                     
                     AppTab.Records -> {
-                        val dailyRecords = fbHistory.flatMap { fbRecord ->
+                        val dailyRecords = fbHistory.map { fbRecord ->
                             val dateStr = sdf.format(Date(fbRecord.timestamp))
-                            listOf(
-                                DailyRecord(dateStr, "Panel 1", "${fbRecord.consumptionPercent}%", "${fbRecord.harvestPercent}%"),
-                                DailyRecord(dateStr, "Panel 2", "---", String.format(Locale.getDefault(), "%.2fV", fbRecord.harvestVoltage))
+                            val timeStr = timeSdf.format(Date(fbRecord.timestamp))
+                            DailyRecord(
+                                date = dateStr,
+                                time = timeStr,
+                                consumption = "${fbRecord.consumptionPercent}%",
+                                s1Harvest = "${fbRecord.harvestPercent}%",
+                                s2Harvest = String.format(Locale.getDefault(), "%.2fV", fbRecord.harvestVoltage)
                             )
                         }
                         DailyRecordsScreen(dailyRecords)
@@ -824,19 +831,14 @@ private fun CameraScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
-    val panels = listOf("All Panels", "Panel 1", "Panel 2")
-    var selectedPanel by rememberSaveable { mutableStateOf(panels[0]) }
-    var expanded by remember { mutableStateOf(false) }
     var selectedDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    val filteredRecords = remember(allRecords, selectedPanel, selectedDateMillis) {
+    val filteredRecords = remember(allRecords, selectedDateMillis) {
         val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
         val dateString = selectedDateMillis?.let { sdf.format(Date(it)) }
         
         allRecords.filter { record ->
-            val panelMatch = selectedPanel == "All Panels" || record.panel == selectedPanel
-            val dateMatch = dateString == null || record.date == dateString
-            panelMatch && dateMatch
+            dateString == null || record.date == dateString
         }
     }
 
@@ -858,56 +860,12 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Box(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
-                OutlinedTextField(
-                    value = selectedPanel,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Panel") },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.fillMaxWidth(0.45f)
-                ) {
-                    panels.forEach { panel ->
-                        DropdownMenuItem(
-                            text = { Text(panel) },
-                            onClick = {
-                                selectedPanel = panel
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            DatePickerField(
-                selectedDate = selectedDateMillis,
-                onDateSelected = { selectedDateMillis = it },
-                label = "Date",
-                modifier = Modifier.weight(1.2f)
-            )
-        }
+        DatePickerField(
+            selectedDate = selectedDateMillis,
+            onDateSelected = { selectedDateMillis = it },
+            label = "Filter by Date",
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
         
@@ -922,13 +880,14 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Date", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("Panel", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("Usage", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("Harvest", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Date", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("Time", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("Cons", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("S1", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("S2", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
@@ -937,7 +896,7 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Fills the remaining 420.dp space
+                    .weight(1f)
             ) {
                 items(filteredRecords.size) { index ->
                     val record = filteredRecords[index]
@@ -951,16 +910,17 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(record.date, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodySmall)
-                            Text(record.panel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            Text(record.date, modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.bodySmall)
+                            Text(record.time, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                             Text(record.consumption, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
-                            Text(record.harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                            Text(record.s1Harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                            Text(record.s2Harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
                         }
                         if (!isLast) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                         }
                     }
                 }

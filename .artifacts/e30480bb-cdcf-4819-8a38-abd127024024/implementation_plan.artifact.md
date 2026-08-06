@@ -1,34 +1,26 @@
-# Implementation Plan - Automated History Logging
+# Implementation Plan - Fix Records History Discrepancy
 
-This plan implements automatic background logging of solar data to the Firebase Realtime Database history table.
-
-## User Review Required
-
-> [!CAUTION]
-> This logging is handled by the app. If multiple devices are running the app simultaneously, the logging logic will include a "cooldown" check to prevent duplicate entries for the same time period.
+This plan resolves the issue where the **Daily Records** table shows 0% values despite the **Live Dashboard** showing active data (100% consumption, etc.).
 
 ## Proposed Changes
 
 ### Data Layer
 
 #### [MODIFY] [FirebaseRepository.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/data/FirebaseRepository.kt)
-- **New Logging Logic**: Add `autoLogHistory(data: SolarLiveData)` function.
-- **Duplicate Prevention**:
-    - This function will fetch the last entry from the `history` node.
-    - It will only write a new record if the current time is at least **5 minutes** later than the last recorded entry.
-    - This ensures a clean, consistent history trail (12 points per hour) without overwhelming the database.
+- **Improve `autoLogHistory`**:
+    - **Validity Check**: Add a check to ensure we only log data if at least one primary metric (Consumption or Harvest) is non-zero. This prevents logging the initial "all-zero" state when the app first connects to Firebase.
+    - **Reliability**: Use the current system time only for the local cooldown check, but ensure the data object being saved contains the correct live values.
 
 ### UI Integration
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Background Logger**: In `MainApp`, add a `LaunchedEffect` that monitors `solarLiveData`.
-- **Trigger**: Every time the live data updates from the hardware, the app will attempt to log it via `repository.autoLogHistory`.
-- **Visual Feedback**: Ensure the **Live Chart** (which filters for the current day) and the **Records** tab instantly reflect these new automated entries.
+- **Refine Logging Trigger**: In `MainApp`, add a small delay or validation to the `LaunchedEffect` that triggers `autoLogHistory`. This ensures that if `solarLiveData` is rapidly updating from 0 to 100, we don't accidentally lock the 1-minute cooldown on the 0 value.
+- **Records Table Formatting**: Ensure the `s2Harvest` column in the records table uses the same formatting logic as the dashboard (displaying as "V" instead of "%" if necessary) to maintain consistency.
 
 ## Verification Plan
 
 ### Manual Verification
-- Deploy the app and keep it open.
-- Check the Firebase Console to see if a new entry is created in the `history` node after 5 minutes.
-- Verify that closing and reopening the app doesn't create immediate duplicate entries (due to the 5-minute cooldown).
-- Confirm that the **Live Power Monitoring** chart grows automatically as new points are added to the history.
+- Deploy to device and verify the **Live Dashboard** shows active data (e.g., 100% Cons).
+- Navigate to the **Records** tab and confirm that the latest record reflects the same active data (100% Cons).
+- Check the Firebase Console to ensure no "all-zero" records are being written to the `history` node during app startup.
+- Verify that every point on the **Line Graph** has a corresponding correct row in the **Daily Records** table.
