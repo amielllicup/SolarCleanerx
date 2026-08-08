@@ -92,6 +92,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,6 +109,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
+import java.net.HttpURLConnection
+import java.net.URL
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
@@ -136,7 +149,6 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 private data class DailyRecord(
-    val date: String,
     val time: String,
     val consumption: String,
     val s1Harvest: String,
@@ -309,23 +321,16 @@ private fun LoginScreen(onLoginSuccess: () -> Unit) {
 private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.Dashboard) }
     
-    // Observe Firebase data
+    // Pure Firebase Sync - No local latches or enforcement logic
     val cleanerOn by repository.getCleanerStatus().collectAsState(initial = false)
+    
+    // Observe Firebase data
     val solarLiveData by repository.getSolarLiveData().collectAsState(initial = SolarLiveData())
     val fbHistory by repository.getHistory().collectAsState(initial = emptyList())
     val fbCleaningHistory by repository.getCleaningHistory().collectAsState(initial = emptyList())
 
     val sdf = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
     val timeSdf = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
-
-    // Automated History Logger
-    LaunchedEffect(solarLiveData) {
-        solarLiveData?.let {
-            // Small delay to ensure live data has stabilized after initial Firebase handshake
-            delay(500)
-            repository.autoLogHistory(it)
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -411,25 +416,15 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
                     AppTab.Camera -> CameraScreen()
                     
                     AppTab.Records -> {
-                        val dailyRecords = fbHistory.map { fbRecord ->
-                            val dateStr = sdf.format(Date(fbRecord.timestamp))
-                            val timeStr = timeSdf.format(Date(fbRecord.timestamp))
-                            DailyRecord(
-                                date = dateStr,
-                                time = timeStr,
-                                consumption = "${fbRecord.consumptionPercent}%",
-                                s1Harvest = "${fbRecord.harvestPercent}%",
-                                s2Harvest = String.format(Locale.getDefault(), "%.2fV", fbRecord.harvestVoltage)
-                            )
-                        }
-                        DailyRecordsScreen(dailyRecords)
+                        HistoryRecordsScreen(fbHistory)
                     }
                     
                     AppTab.Cleaning -> {
                         val cleaningRecords = fbCleaningHistory.map { fbRecord ->
+                            val ts = fbRecord.getSafeTimestamp()
                             CleaningRecord(
-                                date = sdf.format(Date(fbRecord.timestamp)),
-                                time = timeSdf.format(Date(fbRecord.timestamp)),
+                                date = sdf.format(Date(ts)),
+                                time = timeSdf.format(Date(ts)),
                                 action = fbRecord.action,
                                 status = fbRecord.status
                             )
@@ -472,12 +467,12 @@ private fun DashboardScreen(
 
         PanelCard(
             panelName = "Solar Panel 1",
-            harvested = "${solarData.harvestPercent}%"
+            harvested = String.format(Locale.getDefault(), "%.1f V", solarData.solar1Harvest)
         )
         
         PanelCard(
             panelName = "Solar Panel 2",
-            harvested = String.format(Locale.getDefault(), "%.2f V", solarData.harvestVoltage)
+            harvested = String.format(Locale.getDefault(), "%.2f V", solarData.solar2Harvest)
         )
 
         CardContainer {
@@ -541,16 +536,27 @@ private fun DashboardScreen(
 private fun LivePowerChart(history: List<FirebaseHistoryRecord>, liveData: SolarLiveData) {
     val modelProducer = remember { CartesianChartModelProducer() }
     
-    // Filter history for current day
+    // Filter history for latest active day recorded in database (optimized)
     val todayRecords = remember(history) {
-        val calendar = Calendar.getInstance()
-        val today = calendar.get(Calendar.DAY_OF_YEAR)
-        val year = calendar.get(Calendar.YEAR)
+        if (history.isEmpty()) return@remember emptyList()
         
-        history.filter { record ->
-            val recordCal = Calendar.getInstance().apply { timeInMillis = record.timestamp }
-            recordCal.get(Calendar.DAY_OF_YEAR) == today && recordCal.get(Calendar.YEAR) == year
-        }.sortedBy { it.timestamp }
+        // Use the most recent record's date as the boundary
+        val latestTs = history.firstOrNull()?.getSafeTimestamp() ?: return@remember emptyList()
+        val latestCal = Calendar.getInstance().apply { timeInMillis = latestTs }
+        
+        // Calculate start and end of that day in millis
+        latestCal.set(Calendar.HOUR_OF_DAY, 0)
+        latestCal.set(Calendar.MINUTE, 0)
+        latestCal.set(Calendar.SECOND, 0)
+        latestCal.set(Calendar.MILLISECOND, 0)
+        val startOfDay = latestCal.timeInMillis
+        val endOfDay = startOfDay + (24 * 60 * 60 * 1000)
+        
+        // Fast numeric filter (no Calendar creation inside the loop)
+        history.filter { 
+            val ts = it.getSafeTimestamp()
+            ts in startOfDay until endOfDay
+        }.sortedBy { it.getSafeTimestamp() }
     }
 
     LaunchedEffect(todayRecords) {
@@ -558,16 +564,16 @@ private fun LivePowerChart(history: List<FirebaseHistoryRecord>, liveData: Solar
             modelProducer.runTransaction {
                 lineSeries {
                     series(
-                        x = todayRecords.map { it.timestamp.toFloat() },
-                        y = todayRecords.map { it.consumptionPercent.toFloat() }
+                        x = todayRecords.map { it.getSafeTimestamp().toFloat() },
+                        y = todayRecords.map { it.getSafeCons().toFloat() }
                     )
                     series(
-                        x = todayRecords.map { it.timestamp.toFloat() },
-                        y = todayRecords.map { it.harvestPercent.toFloat() }
+                        x = todayRecords.map { it.getSafeTimestamp().toFloat() },
+                        y = todayRecords.map { it.getSafeS1().toFloat() }
                     )
                     series(
-                        x = todayRecords.map { it.timestamp.toFloat() },
-                        y = todayRecords.map { it.harvestVoltage.toFloat() }
+                        x = todayRecords.map { it.getSafeTimestamp().toFloat() },
+                        y = todayRecords.map { it.getSafeS2().toFloat() }
                     )
                 }
             }
@@ -581,13 +587,17 @@ private fun LivePowerChart(history: List<FirebaseHistoryRecord>, liveData: Solar
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Live System Monitoring",
+                    text = "System Monitoring",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
+                val displayDate = remember(todayRecords) {
+                    val ts = todayRecords.lastOrNull()?.getSafeTimestamp() ?: System.currentTimeMillis()
+                    SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(ts))
+                }
                 Text(
-                    text = "Today's Performance Overview",
+                    text = displayDate,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -668,22 +678,24 @@ private fun LivePowerChart(history: List<FirebaseHistoryRecord>, liveData: Solar
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val latestSnapshot = todayRecords.lastOrNull() ?: FirebaseHistoryRecord()
+
             ChartStatItem(
                 icon = Icons.Rounded.Bolt,
                 color = SolarOrange,
-                value = "${liveData.consumptionPercent}%",
+                value = String.format(Locale.getDefault(), "%.1f%%", latestSnapshot.getSafeCons()),
                 label = "Consumption"
             )
             ChartStatItem(
                 icon = Icons.Rounded.LightMode,
                 color = SolarBlue,
-                value = "${liveData.harvestPercent}%",
+                value = String.format(Locale.getDefault(), "%.1fV", latestSnapshot.getSafeS1()),
                 label = "S1 Harvest"
             )
             ChartStatItem(
                 icon = Icons.Rounded.SolarPower,
-                color = SolarBlue,
-                value = String.format(Locale.getDefault(), "%.2fV", liveData.harvestVoltage),
+                color = SolarGreen,
+                value = String.format(Locale.getDefault(), "%.2fV", latestSnapshot.getSafeS2()),
                 label = "S2 Harvest"
             )
         }
@@ -731,6 +743,31 @@ private fun ChartStatItem(icon: ImageVector, color: Color, value: String, label:
 @Composable
 private fun CameraScreen() {
     var ipAddress by rememberSaveable { mutableStateOf("") }
+    var isConnecting by remember { mutableStateOf(false) }
+    var isConnected by remember { mutableStateOf(false) }
+    var workingPort by remember { mutableIntStateOf(80) }
+    var refreshKey by remember { mutableIntStateOf(0) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    val scope = rememberCoroutineScope()
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuccessDialog = false },
+            title = { Text("Connection Successful", fontWeight = FontWeight.Bold) },
+            text = { Text("Camera reached on port $workingPort. Stream is now active.") },
+            confirmButton = {
+                TextButton(onClick = { showSuccessDialog = false }) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = SolarCardDark,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            textContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    }
 
     ScreenColumn {
         Text(
@@ -739,7 +776,7 @@ private fun CameraScreen() {
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Frontend preview for future ESP32-CAM streaming.",
+            text = "Enter your ESP32-CAM IP address to start streaming.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -748,10 +785,14 @@ private fun CameraScreen() {
         CardContainer {
             OutlinedTextField(
                 value = ipAddress,
-                onValueChange = { ipAddress = it },
+                onValueChange = { 
+                    ipAddress = it 
+                    isConnected = false
+                    errorMessage = null
+                },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("ESP-CAM IP Address") },
-                placeholder = { Text("Enter ESP-CAM IP Address") },
+                placeholder = { Text("e.g., 192.168.100.33") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -759,21 +800,86 @@ private fun CameraScreen() {
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
+            
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { },
+                onClick = {
+                    if (ipAddress.isBlank()) {
+                        errorMessage = "Please enter an IP address"
+                        return@Button
+                    }
+                    
+                    isConnecting = true
+                    errorMessage = null
+                    
+                    scope.launch {
+                        val sanitizedIp = ipAddress.trim()
+                            .replace("http://", "")
+                            .replace("https://", "")
+                            .removeSuffix("/")
+                        
+                        val portFound = withContext(Dispatchers.IO) {
+                            var successfulPort = -1
+                            for (port in listOf(80, 81)) { // Try 80 first as it's common for commands
+                                try {
+                                    val url = URL("http://$sanitizedIp:$port")
+                                    val connection = url.openConnection() as HttpURLConnection
+                                    connection.connectTimeout = 2000
+                                    connection.connect()
+                                    if (connection.responseCode != -1) {
+                                        successfulPort = port
+                                        
+                                        // SEQUENTIAL LOGIC: Set resolution BEFORE connecting stream
+                                        // This ensures we only use ONE connection at a time
+                                        try {
+                                            val loResUrl = URL("http://$sanitizedIp:$port/cam-lo.jpg")
+                                            val loResConn = loResUrl.openConnection() as HttpURLConnection
+                                            loResConn.connectTimeout = 2000
+                                            loResConn.connect()
+                                            loResConn.responseCode
+                                        } catch (e: Exception) {}
+                                        
+                                        break
+                                    }
+                                } catch (e: Exception) {
+                                    continue
+                                }
+                            }
+                            successfulPort
+                        }
+                        
+                        isConnecting = false
+                        if (portFound != -1) {
+                            workingPort = portFound
+                            isConnected = true
+                            showSuccessDialog = true
+                        } else {
+                            errorMessage = "Could not reach camera. Check IP and network."
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(52.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    containerColor = if (isConnected) SolarGreen else MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ),
+                enabled = !isConnecting
             ) {
-                Text("CAM", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Connect Camera")
+                if (isConnecting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Icon(imageVector = if (isConnected) Icons.Rounded.EnergySavingsLeaf else Icons.Rounded.Videocam, contentDescription = null)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(if (isConnected) "Connected" else "Connect Camera", fontWeight = FontWeight.Bold)
+                }
             }
         }
 
@@ -787,42 +893,148 @@ private fun CameraScreen() {
             shape = RoundedCornerShape(28.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Rounded.Videocam,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Live Stream Preview",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Connect to view feed",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                if (isConnected) {
+                    val sanitizedIpForUrl = ipAddress.trim()
+                        .replace("http://", "")
+                        .replace("https://", "")
+                        .removeSuffix("/")
+                    
+                    key(refreshKey) {
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    settings.javaScriptEnabled = true
+                                    settings.loadWithOverviewMode = true
+                                    settings.useWideViewPort = true
+                                    settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+                                    settings.builtInZoomControls = false
+                                    settings.displayZoomControls = false
+                                    webViewClient = WebViewClient()
+                                    
+                                    // Set background color to black to remove white bars
+                                    setBackgroundColor(android.graphics.Color.BLACK)
+                                    
+                                    // Load URL directly - confirmed working path
+                                    loadUrl("http://$sanitizedIpForUrl:$workingPort/stream")
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            onRelease = { webView ->
+                                webView.stopLoading()
+                                webView.destroy()
+                            }
+                        )
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Rounded.Videocam,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "No Stream Active",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Connect to your ESP32-CAM",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
         }
 
-        if (ipAddress.isNotBlank()) {
-            Spacer(modifier = Modifier.height(14.dp))
+        if (isConnected) {
+            Spacer(modifier = Modifier.height(16.dp))
             CardContainer {
-                Text(
-                    text = "Sample stream URL",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "http://${ipAddress.trim()}:81/stream",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Active Stream",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val sanitizedUrl = ipAddress.trim()
+                                .replace("http://", "")
+                                .replace("https://", "")
+                                .removeSuffix("/")
+                            Text(
+                                text = "http://$sanitizedUrl:$workingPort/stream",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
+                            onClick = { refreshKey++ },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Autorenew,
+                                contentDescription = "Refresh",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Resolution Control",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Low" to "lo", "Mid" to "mid", "High" to "hi").forEach { (label, suffix) ->
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val sanitized = ipAddress.trim()
+                                            .replace("http://", "")
+                                            .replace("https://", "")
+                                            .removeSuffix("/")
+                                        withContext(Dispatchers.IO) {
+                                            try {
+                                                val url = URL("http://$sanitized:$workingPort/cam-$suffix.jpg")
+                                                val conn = url.openConnection() as HttpURLConnection
+                                                conn.connectTimeout = 2000
+                                                conn.connect()
+                                                conn.responseCode
+                                            } catch (e: Exception) {}
+                                        }
+                                        refreshKey++
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(label, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -830,15 +1042,24 @@ private fun CameraScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
+private fun HistoryRecordsScreen(history: List<FirebaseHistoryRecord>) {
     var selectedDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    val timeSdf = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
-    val filteredRecords = remember(allRecords, selectedDateMillis) {
-        val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
-        val dateString = selectedDateMillis?.let { sdf.format(Date(it)) }
+    val filteredRecords = remember(history, selectedDateMillis) {
+        if (selectedDateMillis == null) return@remember history
         
-        allRecords.filter { record ->
-            dateString == null || record.date == dateString
+        val calendar = Calendar.getInstance().apply { timeInMillis = selectedDateMillis!! }
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+        val endOfDay = startOfDay + (24 * 60 * 60 * 1000)
+        
+        history.filter { 
+            val ts = it.getSafeTimestamp()
+            ts in startOfDay until endOfDay
         }
     }
 
@@ -848,13 +1069,13 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
         Text(
-            text = "Daily Records",
+            text = "History Records",
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.ExtraBold
         )
         Text(
-            text = "Consumption and Harvest logs",
+            text = if (selectedDateMillis == null) "Showing All History" else "Consumption and Harvest logs",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -869,18 +1090,15 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
 
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Fixed Height Table Container
+        // Data Log Table
         Column(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-            // Table Header (Fixed)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Date", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -892,35 +1110,47 @@ private fun DailyRecordsScreen(allRecords: List<DailyRecord>) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
 
-            // Scrollable Data Rows
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                items(filteredRecords.size) { index ->
-                    val record = filteredRecords[index]
-                    val isLast = index == filteredRecords.size - 1
-                    
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(record.date, modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.bodySmall)
-                            Text(record.time, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                            Text(record.consumption, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
-                            Text(record.s1Harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
-                            Text(record.s2Harvest, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+            LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                if (filteredRecords.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text(text = "No records found.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (!isLast) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    }
+                } else {
+                    items(filteredRecords.size) { index ->
+                        val record = filteredRecords[index]
+                        val isLast = index == filteredRecords.size - 1
+                        
+                        // Dynamic formatting
+                        val ts = record.getSafeTimestamp()
+                        val isRealTime = ts > 500000000000L // Threshold for dates after 1985
+                        val dateLabel = if (isRealTime) {
+                            SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(ts))
+                        } else if (ts > 0) "Offset" else "System"
+                        
+                        val timeLabel = if (isRealTime) {
+                            timeSdf.format(Date(ts))
+                        } else if (ts > 0) "Log" else "Uptime"
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RoundedCornerShape(0.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(dateLabel, modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.bodySmall)
+                                Text(timeLabel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(Locale.getDefault(), "%.1f%%", record.getSafeCons()), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarOrange, fontWeight = FontWeight.Bold)
+                                Text(String.format(Locale.getDefault(), "%.1fV", record.getSafeS1()), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                                Text(String.format(Locale.getDefault(), "%.1fV", record.getSafeS2()), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = SolarBlue, fontWeight = FontWeight.Bold)
+                            }
+                            if (!isLast) {
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            }
                         }
                     }
                 }

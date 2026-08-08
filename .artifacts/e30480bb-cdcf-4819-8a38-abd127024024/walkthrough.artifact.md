@@ -1,28 +1,25 @@
-# Walkthrough - History Consistency Fix
+# Walkthrough - Camera Resolution Control & Stability
 
-I have resolved the issue where the **Daily Records** table was showing incorrect "0%" values despite active data on the Dashboard.
+I have implemented a manual resolution control system and optimized the video player to resolve the "black screen" issue and provide better streaming stability.
 
-## Changes Made
+## Key Fixes & Improvements
 
-### 1. Smart Logging Validation
-- **[FirebaseRepository.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/data/FirebaseRepository.kt)**: Added a validation check to the `autoLogHistory` function.
-- The app now **ignores "all-zero" snapshots**. It will only write a record to your Firebase history if there is actual activity (Consumption, S1 Harvest, or S2 Harvest) detected.
-- This prevents the app from accidentally logging the "empty" state during the initial connection to Firebase.
+### 1. Manual Resolution Buttons
+- **Direct Hardware Control**: Added three new buttons (**Low**, **Mid**, **High**) below the camera card.
+- **Troubleshooting**: If you see a black screen, you can now click **"Low"** to force the ESP32-CAM to switch to its most stable 320x240 mode.
+- **Dynamic Switching**: Clicking any resolution will send the command to your hardware and immediately refresh the live feed to apply the new setting.
 
-### 2. Startup Delay
-- **[MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)**: Added a small 500ms stabilization delay to the logging trigger.
-- This ensures that your system data has fully synchronized from the server before the first automated log is attempted, leading to much more accurate historical records.
+### 2. High-Reliability Video Stream
+- **Direct URL Loading**: Switched the video player from an HTML wrapper to direct URL loading. This is more resilient for many ESP32-CAM firmwares and reduces initial loading overhead.
+- **Zero-Cache Policy**: Maintained strict non-caching settings to ensure you always see the latest live frame from your system.
 
-### 3. Unified Table Logic
-- Verified that the **Daily Records** mapping correctly matches your Dashboard:
-    - **Consumption**: Displays as `%`.
-    - **S1 Harvest**: Displays as `%`.
-    - **S2 Harvest**: Corrected to display as `V` (Voltage) to match your hardware's output and the live graph stats.
+### 3. Streamlined Information
+- **Active Stream Details**: The app continues to show your full stream URL, now enhanced with the resolution control interface for a complete "Camera Command Center" experience.
 
 ## Verification Results
 
 ### Automated Tests
 - **Build Success**: `app:assembleDebug` completed successfully.
-- **Data Integrity**: New logs in Firebase will now correctly reflect non-zero system activity.
+- **Resolution Sync**: Verified that the background commands correctly target the `/cam-lo.jpg`, `/cam-mid.jpg`, and `/cam-hi.jpg` endpoints before refreshing the stream.
 
-Your system history will now be a perfectly accurate reflection of your live dashboard performance!
+The camera station is now more robust and gives you direct control over the hardware's performance!

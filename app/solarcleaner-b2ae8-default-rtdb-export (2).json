@@ -1,0 +1,569 @@
+{
+  "SolarMonitor": {
+    "batteryPercent": 0,
+    "batteryVoltage": 0,
+    "cleanerStatus": false,
+    "consumptionPercent": 100,
+    "harvestPercent": 0,
+    "harvestVoltage": 4.06639,
+    "relayMode": 0,
+    "remainingEnergy": 0,
+    "solar1Harvest": 0,
+    "solar1Voltage": 2.18018,
+    "solar2Harvest": 5.60347,
+    "solar2Voltage": 5.95259
+  },
+  "cleanerStatus": false,
+  "cleaningHistory": {
+    "-OyaLnL_fFMcB7VsFdHU": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202420380
+    },
+    "-OyaLpA3P32HjwFqY4C2": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202427835
+    },
+    "-OyaLttlKZPPJz0L5Rcp": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202447208
+    },
+    "-OyaLu8PtlNzI6OU6q1O": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202448209
+    },
+    "-OyaLuJN4IFzAEOqN9zp": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785202448911
+    },
+    "-OyaLuUFaQ3lMqjtfwes": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785202449607
+    },
+    "-OybSNSAXO6yqYl9hLpv": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785220921034
+    },
+    "-OybSPEk-Q6rNnvzb_mP": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785220928367
+    },
+    "-OybWNLlmVWNll6YbB8y": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221969196
+    },
+    "-OybWNUtRnG5TMaMq-Wl": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221969780
+    },
+    "-OybWN_vZ5BE2rxXcEYw": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221970166
+    },
+    "-OybWNeSN7uchr4vpomo": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221970456
+    },
+    "-OybWNhviCAdUkzVfQ_9": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221970678
+    },
+    "-OybWNkql32JHDMWSzvl": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221970865
+    },
+    "-OybWNn38VHxhnLboncj": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221971007
+    },
+    "-OybWNs-TrcX7z6DNjuy": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221971323
+    },
+    "-OybWO-VwfrSa_Rbmuy_": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221971867
+    },
+    "-OybWOi0Szoh160C1TOy": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221974780
+    },
+    "-OybWPPGXUYaTSAXqbql": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221977612
+    },
+    "-OybWQqQsK3v_TCMFCaN": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221983510
+    },
+    "-OybWR2Af5kECT0S2mVV": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221984326
+    },
+    "-OybWTHnTirGKxKddc4c": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785221993518
+    },
+    "-OybWTklZ0eoygXFcIRk": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785221995436
+    },
+    "-Oyba6NKWD4Cuc1fGqVL": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785223210383
+    },
+    "-Oyba73W1Ni7vBpAryCD": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785223213212
+    },
+    "-Oyba7iLAhdnKqMcbgLK": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785223215889
+    },
+    "-OzEk8VdKVTP6WB_Id8q": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785896932393
+    },
+    "-OzEk9rpuv4T-jH2cID8": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785896937973
+    },
+    "-OzEkANejXBJicCvXyDg": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785896940074
+    },
+    "-OzEkBqKjoLke5e-9Zo3": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1785896946069
+    },
+    "-OzK9ejVJWQYmuJ-nVuY": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987771749
+    },
+    "-OzK9fNxxEMLVZKzb-bT": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987774402
+    },
+    "-OzK9hGpmxt_6mvPH28c": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987782138
+    },
+    "-OzK9hh55UNF13sylEKI": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987783883
+    },
+    "-OzK9jSeZIZ-m2d328_M": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987791087
+    },
+    "-OzK9kB1clFwgMwGMmPE": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987794055
+    },
+    "-OzK9m3knUNr-RiDguB6": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987801781
+    },
+    "-OzK9mfDd4Lskm0dZTQP": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1785987804243
+    },
+    "-OzQGcBoETKQkL19HgOU": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786090259417
+    },
+    "-OzQGdF4Ajx36hHQQhEf": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786090263735
+    },
+    "-OzQGdyc9xPpk2vcvqkR": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1786090266714
+    },
+    "-OzREffE6L4JgUKMkQNb": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786106524728
+    },
+    "-OzREgMVTwwyfr5y8YAx": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786106527560
+    },
+    "-OzREjDqDqeDRtaoK6XE": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786106539295
+    },
+    "-OzRFlWLs6jyi-Z1cbOP": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 585851
+    },
+    "-OzRFrjajlTypd2JDRk7": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 611350
+    },
+    "-OzRFvd9ZAU68x67LHvo": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 627325
+    },
+    "-OzRFwzZcjkP-mln9U82": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 632855
+    },
+    "-OzRFzW8gxHQ8D7JIwLt": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 643198
+    },
+    "-OzRG2SzTlku4QIvLKQ3": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 659378
+    },
+    "-OzRG56dgn3TftuNYHva": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 670237
+    },
+    "-OzRG7gOLN7S1s-pXCpo": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 680780
+    },
+    "-OzRJIGuC1lmZt1UPx7t": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786107735520
+    },
+    "-OzRJO9SYnSs3DCMAEuf": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1786107759620
+    },
+    "-OzRJOKudC-v3mbyPi4m": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786107760353
+    },
+    "-OzRJaZxbRkRez_z7ETr": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1786107814564
+    },
+    "-OzRJnXqX8n0_xDYA7Sl": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786107867677
+    },
+    "-OzRJqCdJ9aOcu6c1aX3": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1786107878608
+    },
+    "-OzRMxDjs9_piVT0nEFA": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786108693782
+    },
+    "-OzRN-Ivd1fD9AsQqELK": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": 1786108706402
+    },
+    "-OzRN-UazBwMaroNqH1R": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": 1786108707149
+    },
+    "-OzRSkzGzU2zjZyYLV-I": {
+      "action": "Start",
+      "safeTimestamp": 1786110216497,
+      "status": "Active",
+      "timestamp": 1786110216497
+    },
+    "-OzRSlC2oYXKJ5tChifC": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:43:38"
+    },
+    "-OzRSmgAXuu8A3v6n85E": {
+      "action": "Stop",
+      "safeTimestamp": 1786110223467,
+      "status": "Standby",
+      "timestamp": 1786110223467
+    },
+    "-OzRSmiHyMU_jV2sfjc6": {
+      "action": "Start",
+      "safeTimestamp": 1786110223602,
+      "status": "Active",
+      "timestamp": 1786110223602
+    },
+    "-OzRSn7q7c1jwEj-WMXz": {
+      "action": "Stop",
+      "safeTimestamp": 1786110225302,
+      "status": "Standby",
+      "timestamp": 1786110225302
+    },
+    "-OzRSnABtsJpbOljHzpF": {
+      "action": "Start",
+      "safeTimestamp": 1786110225452,
+      "status": "Active",
+      "timestamp": 1786110225452
+    },
+    "-OzRT-VFPiz2Lm6rfJzH": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:44:41"
+    },
+    "-OzRT4z6aeyNWsDPW2YA": {
+      "action": "Start",
+      "safeTimestamp": 1786110302503,
+      "status": "Active",
+      "timestamp": 1786110302503
+    },
+    "-OzRT5uGFX4er9IEVac0": {
+      "action": "Start",
+      "safeTimestamp": 1786110306289,
+      "status": "Active",
+      "timestamp": 1786110306289
+    },
+    "-OzRT6FH2pxAW2JA7NaF": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:45:09"
+    },
+    "-OzRT9kDldN09tVZS7WQ": {
+      "action": "Stop",
+      "safeTimestamp": 1786110322030,
+      "status": "Standby",
+      "timestamp": 1786110322030
+    },
+    "-OzRT9mLnhWY8wOV6hGe": {
+      "action": "Start",
+      "safeTimestamp": 1786110322166,
+      "status": "Active",
+      "timestamp": 1786110322166
+    },
+    "-OzRU_E3lGR-rF4HUxrW": {
+      "action": "Start",
+      "safeTimestamp": 1786110692644,
+      "status": "Active",
+      "timestamp": 1786110692644
+    },
+    "-OzRUa9AgEzFpsn0qy4u": {
+      "action": "Start",
+      "safeTimestamp": 1786110696427,
+      "status": "Active",
+      "timestamp": 1786110696427
+    },
+    "-OzRUaS9w__gY-0PQ7Xr": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:51:39"
+    },
+    "-OzRUhNOPVZCTmGRX2IK": {
+      "action": "Start",
+      "safeTimestamp": 1786110726009,
+      "status": "Active",
+      "timestamp": 1786110726009
+    },
+    "-OzRUhS7iNxUiFFfa6-p": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": "2026-08-07 21:52:07"
+    },
+    "-OzRUhfXciqqnqe07g5o": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:52:08"
+    },
+    "-OzRUlM24lQUxEseBsgO": {
+      "action": "Start",
+      "safeTimestamp": 1786110742307,
+      "status": "Active",
+      "timestamp": 1786110742307
+    },
+    "-OzRUlQW6iNK-PK5-YV9": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": "2026-08-07 21:52:24"
+    },
+    "-OzRUmCESeHwudYDMNsP": {
+      "action": "Start",
+      "safeTimestamp": 1786110745775,
+      "status": "Active",
+      "timestamp": 1786110745775
+    },
+    "-OzRUmWx5VwFb6PSLyUs": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:52:28"
+    },
+    "-OzRUnpk0pQ-KLECSzh2": {
+      "action": "Stop",
+      "safeTimestamp": 1786110752464,
+      "status": "Standby",
+      "timestamp": 1786110752464
+    },
+    "-OzRUs_HiFFB0Tx8PnGt": {
+      "action": "Start",
+      "safeTimestamp": 1786110771890,
+      "status": "Active",
+      "timestamp": 1786110771890
+    },
+    "-OzRUsdvgziyyClRZzh-": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": "2026-08-07 21:52:53"
+    },
+    "-OzRUssNRZvBYFrKebIt": {
+      "action": "Start",
+      "status": "Active",
+      "timestamp": "2026-08-07 21:52:54"
+    },
+    "-OzRUtascnlZTGnz-1bp": {
+      "action": "Stop",
+      "safeTimestamp": 1786110776088,
+      "status": "Standby",
+      "timestamp": 1786110776088
+    },
+    "-OzRUuR0B1FzIYVgfzsM": {
+      "action": "Stop",
+      "safeTimestamp": 1786110779489,
+      "status": "Standby",
+      "timestamp": 1786110779489
+    },
+    "-OzRV-Dk5msyZdxhkhib": {
+      "action": "Stop",
+      "status": "Standby",
+      "timestamp": "2026-08-07 21:53:24"
+    }
+  },
+  "history": {
+    "-OzRVEsX5TMh7DR4CUcW": {
+      "batteryPercent": 41.92536,
+      "batteryVoltage": 11.67701,
+      "cleanerStatus": false,
+      "consumptionPercent": 58.07464,
+      "harvestPercent": 0,
+      "harvestVoltage": 4.08949,
+      "relayMode": 0,
+      "relayStatus": "Both OFF",
+      "remainingEnergy": 176.0865,
+      "solar1Harvest": 0,
+      "solar1Voltage": 2.2986,
+      "solar2Harvest": 5.17873,
+      "solar2Voltage": 5.88038,
+      "timestamp": "2026-08-07 21:54:28"
+    },
+    "-OzRVTb8FcONLRnt2Zpn": {
+      "batteryPercent": 39.06805,
+      "batteryVoltage": 11.56272,
+      "cleanerStatus": false,
+      "consumptionPercent": 60.93195,
+      "harvestPercent": 22.30288,
+      "harvestVoltage": 8.79149,
+      "relayMode": 0,
+      "relayStatus": "Both OFF",
+      "remainingEnergy": 164.08583,
+      "solar1Harvest": 39.46343,
+      "solar1Voltage": 11.70878,
+      "solar2Harvest": 5.14233,
+      "solar2Voltage": 5.8742,
+      "timestamp": "2026-08-07 21:55:29"
+    },
+    "-OzRVhE3sFjwWmp_vFBf": {
+      "batteryPercent": 39.05775,
+      "batteryVoltage": 11.56231,
+      "cleanerStatus": false,
+      "consumptionPercent": 60.94225,
+      "harvestPercent": 22.18153,
+      "harvestVoltage": 8.77086,
+      "relayMode": 0,
+      "relayStatus": "Both OFF",
+      "remainingEnergy": 164.04257,
+      "solar1Harvest": 39.49499,
+      "solar1Voltage": 11.71415,
+      "solar2Harvest": 4.86807,
+      "solar2Voltage": 5.82757,
+      "timestamp": "2026-08-07 21:56:29"
+    },
+    "-OzRVvsYlmX-_sJ7xoy2": {
+      "batteryPercent": 39.00616,
+      "batteryVoltage": 11.56025,
+      "cleanerStatus": false,
+      "consumptionPercent": 60.99384,
+      "harvestPercent": 19.29939,
+      "harvestVoltage": 8.2809,
+      "relayMode": 0,
+      "relayStatus": "Both OFF",
+      "remainingEnergy": 163.82588,
+      "solar1Harvest": 39.47314,
+      "solar1Voltage": 11.71043,
+      "solar2Harvest": 0,
+      "solar2Voltage": 4.85136,
+      "timestamp": "2026-08-07 21:57:29"
+    },
+    "-OzRW9X2GAC0Zbd07K8L": {
+      "batteryPercent": 38.83083,
+      "batteryVoltage": 11.55323,
+      "cleanerStatus": false,
+      "consumptionPercent": 61.16917,
+      "harvestPercent": 22.49583,
+      "harvestVoltage": 8.82429,
+      "relayMode": 0,
+      "relayStatus": "Both OFF",
+      "remainingEnergy": 163.08948,
+      "solar1Harvest": 39.38091,
+      "solar1Voltage": 11.69475,
+      "solar2Harvest": 5.61076,
+      "solar2Voltage": 5.95383,
+      "timestamp": "2026-08-07 21:58:29"
+    }
+  }
+}

@@ -4,38 +4,107 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class SolarLiveData(
-    val batteryPercent: Int = 0,
+    val batteryPercent: Double = 0.0,
     val batteryVoltage: Double = 0.0,
-    val consumptionPercent: Int = 0,
-    val harvestPercent: Int = 0,
+    val consumptionPercent: Double = 0.0,
+    val harvestPercent: Double = 0.0,
     val harvestVoltage: Double = 0.0,
-    val remainingEnergy: Int = 0,
+    val relayMode: Int = 0,
+    val remainingEnergy: Double = 0.0,
+    val solar1Harvest: Double = 0.0,
     val solar1Voltage: Double = 0.0,
+    val solar2Harvest: Double = 0.0,
     val solar2Voltage: Double = 0.0
 )
 
-data class FirebaseHistoryRecord(
-    val batteryPercent: Int = 0,
-    val batteryVoltage: Double = 0.0,
-    val consumptionPercent: Int = 0,
-    val harvestPercent: Int = 0,
-    val harvestVoltage: Double = 0.0,
-    val remainingEnergy: Int = 0,
-    val solar1Voltage: Double = 0.0,
-    val solar2Voltage: Double = 0.0,
-    val timestamp: Long = 0
-)
+class FirebaseHistoryRecord() {
+    var batteryPercent: Any? = 0.0
+    var batteryVoltage: Any? = 0.0
+    var consumptionPercent: Any? = 0.0
+    var harvestPercent: Any? = 0.0
+    var harvestVoltage: Any? = 0.0
+    var remainingEnergy: Any? = 0.0
+    var solar1Harvest: Any? = 0.0
+    var solar1Voltage: Any? = 0.0
+    var solar2Harvest: Any? = 0.0
+    var solar2Voltage: Any? = 0.0
+    var timestamp: Any? = 0L
+
+    // Cache the parsed timestamp to prevent repeated expensive parsing
+    val cachedTimestamp: Long by lazy { timestamp.toSafeLong() }
+
+    fun getSafeTimestamp(): Long = cachedTimestamp
+    fun getSafeCons(): Double = consumptionPercent.toSafeDouble()
+    fun getSafeS1(): Double {
+        val s1 = solar1Harvest.toSafeDouble()
+        return if (s1 > 0) s1 else harvestPercent.toSafeDouble()
+    }
+    fun getSafeS2(): Double {
+        val s2 = solar2Harvest.toSafeDouble()
+        if (s2 > 0) return s2
+        val s2V = solar2Voltage.toSafeDouble()
+        return if (s2V > 0) s2V else harvestVoltage.toSafeDouble()
+    }
+
+    private fun Any?.toSafeLong(): Long {
+        return when (this) {
+            is Long -> this
+            is Double -> this.toLong()
+            is Int -> this.toLong()
+            is String -> {
+                this.toLongOrNull() ?: try {
+                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    sdf.parse(this)?.time ?: 0L
+                } catch (e: Exception) {
+                    0L
+                }
+            }
+            else -> 0L
+        }
+    }
+
+    private fun Any?.toSafeDouble(): Double {
+        return when (this) {
+            is Double -> this
+            is Float -> this.toDouble()
+            is Long -> this.toDouble()
+            is Int -> this.toDouble()
+            is String -> this.toDoubleOrNull() ?: 0.0
+            else -> 0.0
+        }
+    }
+}
 
 data class FirebaseCleaningRecord(
     val action: String = "",
     val status: String = "",
-    val timestamp: Long = 0
-)
+    val timestamp: Any? = 0L
+) {
+    fun getSafeTimestamp(): Long {
+        return when (val t = timestamp) {
+            is Long -> t
+            is Double -> t.toLong()
+            is String -> t.toLongOrNull() ?: try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                sdf.parse(t)?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+            is Int -> t.toLong()
+            else -> 0L
+        }
+    }
+}
 
 class FirebaseRepository {
     private val database by lazy { FirebaseDatabase.getInstance() }
@@ -91,7 +160,7 @@ class FirebaseRepository {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val records = snapshot.children.mapNotNull { 
                     it.getValue(FirebaseHistoryRecord::class.java) 
-                }.reversed()
+                }
                 trySend(records)
             }
             override fun onCancelled(error: DatabaseError) {
@@ -101,7 +170,9 @@ class FirebaseRepository {
         val ref = historyRef
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
-    }
+    }.map { list ->
+        list.sortedByDescending { it.cachedTimestamp }
+    }.flowOn(Dispatchers.Default)
 
     fun getCleaningHistory(): Flow<List<FirebaseCleaningRecord>> = callbackFlow {
         val listener = object : ValueEventListener {
@@ -122,32 +193,5 @@ class FirebaseRepository {
     
     fun addHistoryRecord(record: FirebaseHistoryRecord) {
         historyRef.push().setValue(record)
-    }
-
-    fun autoLogHistory(data: SolarLiveData) {
-        // Validation: Only log if there is non-zero system activity to avoid capturing startup nulls
-        if (data.consumptionPercent == 0 && data.harvestPercent == 0 && data.harvestVoltage == 0.0) return
-
-        historyRef.limitToLast(1).get().addOnSuccessListener { snapshot ->
-            val lastRecord = snapshot.children.firstOrNull()?.getValue(FirebaseHistoryRecord::class.java)
-            val currentTime = System.currentTimeMillis()
-            
-            // Check if 1 minute (60,000 ms) have passed since the last record
-            val oneMinuteInMillis = 1 * 60 * 1000
-            if (lastRecord == null || (currentTime - lastRecord.timestamp) >= oneMinuteInMillis) {
-                val newRecord = FirebaseHistoryRecord(
-                    batteryPercent = data.batteryPercent,
-                    batteryVoltage = data.batteryVoltage,
-                    consumptionPercent = data.consumptionPercent,
-                    harvestPercent = data.harvestPercent,
-                    harvestVoltage = data.harvestVoltage,
-                    remainingEnergy = data.remainingEnergy,
-                    solar1Voltage = data.solar1Voltage,
-                    solar2Voltage = data.solar2Voltage,
-                    timestamp = currentTime
-                )
-                addHistoryRecord(newRecord)
-            }
-        }
     }
 }

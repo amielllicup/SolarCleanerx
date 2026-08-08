@@ -1,4 +1,5 @@
-- [x] Add non-zero validation to `autoLogHistory` in `FirebaseRepository.kt`
-- [x] Refine logging trigger in `MainActivity.kt`
-- [x] Verify Dashboard and Records consistency
-- [x] Build and verify
+- [x] Add manual resolution control buttons to `CameraScreen`
+- [x] Simplify `AndroidView` to load stream URL directly
+- [x] Refine `onToggle` logic for resolution commands in `MainActivity.kt`
+- [x] Update `refreshKey` logic for resolution changes
+- [x] Build and verify low-res streaming

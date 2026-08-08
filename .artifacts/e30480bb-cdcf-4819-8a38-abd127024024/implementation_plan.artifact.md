@@ -1,26 +1,26 @@
-# Implementation Plan - Fix Records History Discrepancy
+# Implementation Plan - Force Low Resolution & Fix Camera Black Screen
 
-This plan resolves the issue where the **Daily Records** table shows 0% values despite the **Live Dashboard** showing active data (100% consumption, etc.).
+This plan forces the ESP32-CAM into its lowest resolution and simplifies the streaming logic to resolve the persistent black screen issue.
 
 ## Proposed Changes
 
-### Data Layer
-
-#### [MODIFY] [FirebaseRepository.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/data/FirebaseRepository.kt)
-- **Improve `autoLogHistory`**:
-    - **Validity Check**: Add a check to ensure we only log data if at least one primary metric (Consumption or Harvest) is non-zero. This prevents logging the initial "all-zero" state when the app first connects to Firebase.
-    - **Reliability**: Use the current system time only for the local cooldown check, but ensure the data object being saved contains the correct live values.
-
-### UI Integration
+### [Component] Camera Screen Enhancements
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Refine Logging Trigger**: In `MainApp`, add a small delay or validation to the `LaunchedEffect` that triggers `autoLogHistory`. This ensures that if `solarLiveData` is rapidly updating from 0 to 100, we don't accidentally lock the 1-minute cooldown on the 0 value.
-- **Records Table Formatting**: Ensure the `s2Harvest` column in the records table uses the same formatting logic as the dashboard (displaying as "V" instead of "%" if necessary) to maintain consistency.
+- **Simplify Connection Phase**:
+    - Focus strictly on setting the resolution to **Low (320x240)** during the connection process.
+    - Add a manual **"Set Low Resolution"** button to the UI for troubleshooting.
+- **Direct Stream Loading**:
+    - Switch the `WebView` from an HTML wrapper back to a direct URL load for the `/stream` endpoint. Some MJPEG streams are more stable when loaded directly.
+- **Resolution Feedback**:
+    - Add buttons for **"Low"**, **"Mid"**, and **"High"** resolutions under the camera card.
+    - These buttons will send independent commands to the ESP32-CAM and then trigger a stream refresh.
+- **Enhanced Settings**:
+    - Configure the `WebView` to be more resilient (disable cache, enable zoom controls for inspection).
 
 ## Verification Plan
 
 ### Manual Verification
-- Deploy to device and verify the **Live Dashboard** shows active data (e.g., 100% Cons).
-- Navigate to the **Records** tab and confirm that the latest record reflects the same active data (100% Cons).
-- Check the Firebase Console to ensure no "all-zero" records are being written to the `history` node during app startup.
-- Verify that every point on the **Line Graph** has a corresponding correct row in the **Daily Records** table.
+- **Low-Res Test**: Click "Connect" and confirm if the low-resolution stream appears.
+- **Manual Toggle**: Click the "Low" resolution button below the camera and verify if the black screen resolves.
+- **Direct Link Test**: Check the "Active Stream" URL displayed at the bottom to ensure it points correctly to your camera's port and path.
