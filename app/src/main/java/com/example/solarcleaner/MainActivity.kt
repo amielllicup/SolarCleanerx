@@ -776,7 +776,7 @@ private fun CameraScreen() {
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Enter your ESP32-CAM IP address to start streaming.",
+            text = "Enter your camera IP address to start streaming.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -791,7 +791,7 @@ private fun CameraScreen() {
                     errorMessage = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("ESP-CAM IP Address") },
+                label = { Text("Camera IP Address") },
                 placeholder = { Text("e.g., 192.168.100.33") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -941,7 +941,7 @@ private fun CameraScreen() {
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Connect to your ESP32-CAM",
+                            text = "Connect to your camera",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
