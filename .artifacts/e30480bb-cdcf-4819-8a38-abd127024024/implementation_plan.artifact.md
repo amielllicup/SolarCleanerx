@@ -1,26 +1,27 @@
-# Implementation Plan - Force Low Resolution & Fix Camera Black Screen
+# Implementation Plan - Automated Cleaning Trigger (High Dust)
 
-This plan forces the ESP32-CAM into its lowest resolution and simplifies the streaming logic to resolve the persistent black screen issue.
+Add logic to automatically start the cleaning cycle when the dust sensor detects a "HIGH DUST" condition.
 
 ## Proposed Changes
 
-### [Component] Camera Screen Enhancements
+### Data Layer
+
+#### [MODIFY] [FirebaseRepository.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/data/FirebaseRepository.kt)
+- **New Data Model**: Add `DustSensorData` class to handle fields: `dustDensity`, `raw`, `status`, `voltage`.
+- **New Listener**: Add `getDustSensorData()` to observe the `/dustSensor` node in Firebase.
+
+### Application Logic
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/TESDA-IT/StudioProjects/SolarCleanerx/app/src/main/java/com/example/solarcleaner/MainActivity.kt)
-- **Simplify Connection Phase**:
-    - Focus strictly on setting the resolution to **Low (320x240)** during the connection process.
-    - Add a manual **"Set Low Resolution"** button to the UI for troubleshooting.
-- **Direct Stream Loading**:
-    - Switch the `WebView` from an HTML wrapper back to a direct URL load for the `/stream` endpoint. Some MJPEG streams are more stable when loaded directly.
-- **Resolution Feedback**:
-    - Add buttons for **"Low"**, **"Mid"**, and **"High"** resolutions under the camera card.
-    - These buttons will send independent commands to the ESP32-CAM and then trigger a stream refresh.
-- **Enhanced Settings**:
-    - Configure the `WebView` to be more resilient (disable cache, enable zoom controls for inspection).
+- **Observe Dust Level**: In `MainApp`, collect the new `dustSensorData` stream from the repository.
+- **Automated Trigger**: Implement a `LaunchedEffect` that monitors the dust sensor status.
+    - **Logic**: If `status == "HIGH DUST"` AND `cleanerOn == false`, automatically call `repository.toggleCleaner(true)`.
+    - **Safety**: Ensure this only triggers once when the threshold is crossed to prevent multiple duplicate "Start" commands in the log.
 
 ## Verification Plan
 
 ### Manual Verification
-- **Low-Res Test**: Click "Connect" and confirm if the low-resolution stream appears.
-- **Manual Toggle**: Click the "Low" resolution button below the camera and verify if the black screen resolves.
-- **Direct Link Test**: Check the "Active Stream" URL displayed at the bottom to ensure it points correctly to your camera's port and path.
+- **Simulated Test**: Use the Firebase Console to manually change `/dustSensor/status` to `"HIGH DUST"`.
+- **Observation**: Verify that the app's "Cleaner Control" button automatically switches to "Stop Cleaning Cycle" and the hardware node `cleanerStatus` becomes `true`.
+- **Log Check**: Verify that a "Start" action is recorded in the `cleaningHistory` node.
+- **Reset Test**: Change status back to `"CLEAN"` and verify the cleaner doesn't automatically turn off (as per previous requirement: user must turn it off manually).

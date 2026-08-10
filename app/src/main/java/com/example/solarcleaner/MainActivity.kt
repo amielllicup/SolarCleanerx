@@ -328,9 +328,17 @@ private fun MainApp(repository: FirebaseRepository, onLogout: () -> Unit) {
     val solarLiveData by repository.getSolarLiveData().collectAsState(initial = SolarLiveData())
     val fbHistory by repository.getHistory().collectAsState(initial = emptyList())
     val fbCleaningHistory by repository.getCleaningHistory().collectAsState(initial = emptyList())
+    val dustSensorData by repository.getDustSensorData().collectAsState(initial = null)
 
     val sdf = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
     val timeSdf = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+
+    // Automated "HIGH DUST" Trigger
+    LaunchedEffect(dustSensorData) {
+        if (dustSensorData?.status == "HIGH DUST" && !cleanerOn) {
+            repository.toggleCleaner(true)
+        }
+    }
 
     Scaffold(
         topBar = {

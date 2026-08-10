@@ -27,6 +27,13 @@ data class SolarLiveData(
     val solar2Voltage: Double = 0.0
 )
 
+data class DustSensorData(
+    val dustDensity: Double = 0.0,
+    val raw: Double = 0.0,
+    val status: String = "",
+    val voltage: Double = 0.0
+)
+
 class FirebaseHistoryRecord() {
     var batteryPercent: Any? = 0.0
     var batteryVoltage: Any? = 0.0
@@ -112,6 +119,7 @@ class FirebaseRepository {
     private val cleanerStatusRef by lazy { database.getReference("cleanerStatus") }
     private val historyRef by lazy { database.getReference("history") }
     private val cleaningHistoryRef by lazy { database.getReference("cleaningHistory") }
+    private val dustSensorRef by lazy { database.getReference("dustSensor") }
 
     fun getSolarLiveData(): Flow<SolarLiveData?> = callbackFlow {
         val listener = object : ValueEventListener {
@@ -139,6 +147,19 @@ class FirebaseRepository {
         val ref = cleanerStatusRef
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
+    }
+
+    fun getDustSensorData(): Flow<DustSensorData?> = callbackFlow {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(snapshot.getValue(DustSensorData::class.java))
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        dustSensorRef.addValueEventListener(listener)
+        awaitClose { dustSensorRef.removeEventListener(listener) }
     }
 
     fun toggleCleaner(status: Boolean) {

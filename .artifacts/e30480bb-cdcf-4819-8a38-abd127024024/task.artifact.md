@@ -1,5 +1,3 @@
-- [x] Add manual resolution control buttons to `CameraScreen`
-- [x] Simplify `AndroidView` to load stream URL directly
-- [x] Refine `onToggle` logic for resolution commands in `MainActivity.kt`
-- [x] Update `refreshKey` logic for resolution changes
-- [x] Build and verify low-res streaming
+- [x] Add `DustSensorData` and `getDustSensorData()` in `FirebaseRepository.kt`
+- [x] Implement automated "HIGH DUST" trigger in `MainActivity.kt`
+- [x] Verify build and functionality
